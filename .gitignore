@@ -44,4 +44,4 @@ app-example
 /android
 
 api.json
-/services/api.js
+api.js

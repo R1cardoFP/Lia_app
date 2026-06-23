@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { router } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, FlatList, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import api from '../../services/api';
@@ -65,7 +66,6 @@ export default function Catalogo() {
     }
   };
 
-  // FUNÇÃO NOVA: O que acontece quando se clica numa categoria
   const mudarCategoria = (idCategoria) => {
     setCategoriaAtiva(idCategoria);
     setTemMaisPaginas(true);
@@ -109,9 +109,12 @@ export default function Catalogo() {
           <Text style={styles.saudacao}>BOM DIA</Text>
           <Text style={styles.nomeUtilizador}>Guilherme Magalhães</Text> 
         </View>
-        <View style={styles.avatarContainer}>
+        <TouchableOpacity 
+          style={styles.avatarContainer} 
+          onPress={() => router.push('/perfil')} // <-- ATIRA PARA O PERFIL
+        >
           <Text style={styles.avatarText}>GM</Text>
-        </View>
+        </TouchableOpacity>
       </View>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoriasContainer}>

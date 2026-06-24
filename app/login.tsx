@@ -28,7 +28,7 @@ export default function Login() {
         setResultado('Login feito com sucesso!');
         
         // 3. Ir para o ecrã do Catálogo (apenas uma vez!)
-        router.replace('/(tabs)');
+        router.replace('/(tabs)/catalogo');
       } else {
         setResultado('Login feito, mas não recebemos token do servidor.');
       }

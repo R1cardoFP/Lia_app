@@ -39,7 +39,7 @@ export default function Register() {
       
       <TouchableOpacity 
         style={{ marginTop: 20 }} 
-        onPress={() => router.push('/login')} // <-- 4. USA O ROUTER.PUSH AQUI
+        onPress={() => router.replace('/login')} // <-- 4. USA O ROUTER.PUSH AQUI
       >
         <Text style={{ color: '#007BFF', textAlign: 'center', fontSize: 16 }}>
           Já tens conta? Faz Login

@@ -1,11 +1,11 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { router } from 'expo-router';
-import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, SafeAreaView, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { router, useFocusEffect } from 'expo-router'; // <-- Adicionado useFocusEffect
+import React, { useCallback, useEffect, useState } from 'react'; // <-- Adicionado useCallback
+import { ActivityIndicator, FlatList, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'; // <-- Adicionado Image e removido SafeAreaView daqui
+import { SafeAreaView } from 'react-native-safe-area-context'; // <-- Adicionado para eliminar o Warning do SafeAreaView
 import api from '../../services/api';
 
 export default function Catalogo() {
-  // O estado agora guarda objetos reais: { id: 1, description: 'Câmaras' }
   const [categoriasDB, setCategoriasDB] = useState([{ id: 'Todos', description: 'Todos' }]);
   const [categoriaAtiva, setCategoriaAtiva] = useState('Todos');
   
@@ -17,11 +17,60 @@ export default function Catalogo() {
   const [paginaAtual, setPaginaAtual] = useState(1);
   const [temMaisPaginas, setTemMaisPaginas] = useState(true);
 
+  // --- NOVOS ESTADOS PARA O UTILIZADOR DINÂMICO ---
+  const [userName, setUserName] = useState('Carregando...');
+  const [userInitials, setUserInitials] = useState('');
+  const [imageUri, setImageUri] = useState(null);
+
   useEffect(() => {
     carregarCatalogo(1, 'Todos');
   }, []);
 
-  // Adicionámos o parâmetro catId para sabermos o que pedir ao Laravel
+  useFocusEffect(
+    useCallback(() => {
+      carregarDadosUtilizador();
+    }, [])
+  );
+
+  const carregarDadosUtilizador = async () => {
+    try {
+      const token = await AsyncStorage.getItem('userToken');
+      const response = await api.get('/me', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      const user = response.data;
+
+      // 1. Atualizar Nome
+      if (user.name) {
+        setUserName(user.name);
+        
+        // Calcular Iniciais
+        const partesNome = user.name.trim().split(' ');
+        if (partesNome.length > 1) {
+          setUserInitials((partesNome[0][0] + partesNome[partesNome.length - 1][0]).toUpperCase());
+        } else {
+          setUserInitials(user.name.substring(0, 2).toUpperCase());
+        }
+      }
+
+      // 2. Atualizar Imagem de Perfil
+      if (user.image) {
+        const baseURL = 'http://192.168.1.81:8000'; 
+        
+        const caminhoImagem = user.image.startsWith('/') ? user.image.substring(1) : user.image;
+        const urlFinal = `${baseURL}/${caminhoImagem}`;
+        
+        console.log('LINK DA FOTO NO CATÁLOGO:', urlFinal); // <-- VÊ ESTE LOG NO TERMINAL!
+        setImageUri(urlFinal);
+      } else {
+        setImageUri(null);
+      }
+    } catch (error) {
+      console.log('Erro ao carregar dados do utilizador no catálogo:', error);
+    }
+  };
+
   const carregarCatalogo = async (numeroPagina, catId = categoriaAtiva) => {
     if (loadingMore) return;
     if (numeroPagina > 1 && !temMaisPaginas) return;
@@ -32,7 +81,6 @@ export default function Catalogo() {
 
       const token = await AsyncStorage.getItem('userToken');
       
-      // Enviamos a página e a categoria escolhida
       const response = await api.get(`/catalogo?page=${numeroPagina}&categoria_id=${catId}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -40,12 +88,12 @@ export default function Catalogo() {
       if (response.data.status === 'success') {
         const novosDados = response.data.data;
         
-        // Se for a página 1 e o Laravel mandou categorias, guardamo-las!
         if (numeroPagina === 1 && novosDados.categorias) {
           setCategoriasDB([
             { id: 'Todos', description: 'Todos' }, 
             { id: 'Kits', description: 'Kits' },
-            ...novosDados.categorias]);
+            ...novosDados.categorias
+          ]);
         }
         
         if (numeroPagina === 1) {
@@ -69,8 +117,8 @@ export default function Catalogo() {
   const mudarCategoria = (idCategoria) => {
     setCategoriaAtiva(idCategoria);
     setTemMaisPaginas(true);
-    setEquipamentosItens([]); // Esvazia a lista antiga visualmente
-    carregarCatalogo(1, idCategoria); // Pede a página 1 da nova categoria
+    setEquipamentosItens([]); 
+    carregarCatalogo(1, idCategoria); 
   };
 
   const aoChegarAoFimDaLista = () => {
@@ -106,19 +154,23 @@ export default function Catalogo() {
     <View style={{ paddingBottom: 15 }}>
       <View style={styles.header}>
         <View>
-          <Text style={styles.saudacao}>BOM DIA</Text>
-          <Text style={styles.nomeUtilizador}>Guilherme Magalhães</Text> 
+          <Text style={styles.saudacao}>Olá</Text>
+          <Text style={styles.nomeUtilizador}>{userName}</Text> 
         </View>
         <TouchableOpacity 
           style={styles.avatarContainer} 
-          onPress={() => router.push('/perfil')} // <-- ATIRA PARA O PERFIL
+          onPress={() => router.push('/perfil')} 
         >
-          <Text style={styles.avatarText}>GM</Text>
+          {/* --- AVATAR DINÂMICO: IMAGEM VS INICIAIS --- */}
+          {imageUri ? (
+            <Image source={{ uri: imageUri }} style={styles.imageAvatar} />
+          ) : (
+            <Text style={styles.avatarText}>{userInitials}</Text>
+          )}
         </TouchableOpacity>
       </View>
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoriasContainer}>
-        {/* Renderiza as categorias reais da Base de Dados */}
         {categoriasDB.map((cat) => (
           <TouchableOpacity 
             key={cat.id} 
@@ -132,7 +184,6 @@ export default function Catalogo() {
         ))}
       </ScrollView>
 
-      {/* Os destaques (kits) só aparecem se existirem (ex: no separador "Todos") */}
       {destaquesKits.length > 0 && (
         <>
           <Text style={styles.sectionTitle}>EM DESTAQUE (KITS)</Text>
@@ -186,8 +237,6 @@ export default function Catalogo() {
         onEndReached={aoChegarAoFimDaLista}
         onEndReachedThreshold={0.1} 
         ListFooterComponent={renderFooter}
-        
-        // Esta listEmptyComponent é mostrada caso a categoria não tenha nenhum equipamento
         ListEmptyComponent={!loadingInitial && (
           <Text style={{ textAlign: 'center', color: '#9E9E9E', marginTop: 20 }}>
             Nenhum equipamento encontrado nesta categoria.
@@ -198,7 +247,6 @@ export default function Catalogo() {
   );
 }
 
-// ... MATÉM EXATAMENTE O MESMO bloco de `const styles = StyleSheet.create({...` AQUI
 
 const styles = StyleSheet.create({
   safeArea: {
@@ -233,6 +281,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#1A237E',
     justifyContent: 'center',
     alignItems: 'center',
+    overflow: 'hidden'
+  },
+  imageAvatar: { 
+    width: 45, 
+    height: 45, 
+    borderRadius: 22.5
   },
   avatarText: {
     color: '#FFF',

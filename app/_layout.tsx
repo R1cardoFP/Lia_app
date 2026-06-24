@@ -22,7 +22,7 @@ export default function RootLayout() {
               backgroundColor: '#065294',      
             }, 
             headerShadowVisible: false,        
-                   
+            headerBackVisible: false,  
           }} /> 
         <Stack.Screen  
           name="register"  
@@ -33,7 +33,7 @@ export default function RootLayout() {
               backgroundColor: '#00a385',      
             }, 
             headerShadowVisible: false,        
-            headerTintColor: '#fff',          // Torna a seta nativa de voltar atrás BRANCA 
+            headerTintColor: '#fff',         
           }} 
         /> 
         

@@ -1,8 +1,8 @@
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
-import { ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context'; // Corrige o Aviso de Depreciação 
+import { KeyboardAvoidingView, Platform, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import api from '../services/api';
  
 export default function Register() { 
@@ -15,24 +15,81 @@ export default function Register() {
   const [confirmPassword, setConfirmPassword] = useState(''); 
   const [password, setPassword] = useState(''); 
   const [resultado, setResultado] = useState(''); 
+
+  const [securePassword, setSecurePassword] = useState(true);
+  const [secureConfirmPassword, setSecureConfirmPassword] = useState(true);
+
+  const [isError, setIsError] = useState(false);
  
   const testarRegisto = async () => { 
+    setResultado('');
+    setIsError(false);
+    const nameTrimmed = name.trim();
+    const emailTrimmed = email.trim();
+    const phoneTrimmed = phone.trim();
+    const studentTrimmed = studentNumber.trim();
+
+    
+    if (!nameTrimmed || !emailTrimmed || !phoneTrimmed || !password || !confirmPassword) {
+      setResultado('Por favor, preencha todos os campos obrigatórios.');
+      setIsError(true);
+      return;
+    }
+
+    
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(emailTrimmed)) {
+      setResultado('Por favor, introduza um formato de email válido.');
+      setIsError(true);
+      return;
+    }
+
+    
+    if (!/^[0-9]{9}$/.test(phoneTrimmed)) {
+      setResultado('O número de telemóvel deve conter exatamente 9 dígitos.');
+      setIsError(true);
+      return;
+    }
+
+    
+    if (password.length < 6) {
+      setResultado('A password deve ter pelo menos 6 caracteres.');
+      setIsError(true);
+      return;
+    }
+
+    
+    if (password !== confirmPassword) {
+      setResultado('As passwords introduzidas não são iguais.');
+      setIsError(true);
+      return;
+    }
+
     try { 
-      const response = await api.post('/register', {  
-        name,  
-        email,  
-        password  
+    const response = await api.post('/register', {  
+        name: nameTrimmed,  
+        email: emailTrimmed,  
+        password: password,
+        phone: phoneTrimmed,
+        student_number: studentTrimmed ? studentTrimmed : null
       }); 
-      setResultado('Sucesso: ' + JSON.stringify(response.data)); 
+      
+      setIsError(false);
+      setResultado('Conta criada com sucesso! Efetua o login.'); 
        
       setTimeout(() => router.replace('/login'), 1500); 
        
     } catch (error: any) { 
-      setResultado('Erro: ' + (error.response?.data?.message || error.message)); 
-    } 
+      setIsError(true);
+      setResultado(error.response?.data?.message || 'Não foi possível conectar ao servidor. Verifique a rede.'); 
+    }
   }; 
  
   return ( 
+    <KeyboardAvoidingView 
+      style={{ flex: 1 }} 
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+    >
     <View style={styles.container}> 
       <StatusBar barStyle="light-content" backgroundColor="#00a385" /> 
        
@@ -64,12 +121,12 @@ export default function Register() {
             </View> 
  
             {/*     Campo: Nº Estudante */} 
-            <Text style={styles.label}>Nº Estudante</Text> 
+            <Text style={styles.label}>Nº Estudante <Text style={{ textTransform: 'none', fontWeight: 'normal', color: '#a0aec0' }}>(opcional)</Text></Text>
             <View style={styles.inputWrapper}> 
               <Feather name="user-check" size={14} color="#b0bfcc" style={styles.inputIcon} /> 
               <TextInput  
                 style={styles.inp}  
-                placeholder="A12345678"  
+                placeholder="14675"  
                 placeholderTextColor="#b0bfcc" 
                 value={studentNumber} 
                 onChangeText={setStudentNumber} 
@@ -82,7 +139,7 @@ export default function Register() {
               <Feather name="mail" size={14} color="#b0bfcc" style={styles.inputIcon} /> 
               <TextInput  
                 style={styles.inp}  
-                placeholder="utilizador@lia.pt"  
+                placeholder="utilizador@ipvc.pt"  
                 placeholderTextColor="#b0bfcc" 
                 autoCapitalize="none" 
                 keyboardType="email-address" 
@@ -91,56 +148,62 @@ export default function Register() {
               /> 
             </View> 
  
-            {/*        Campo: Telemóvel */} 
-            <Text style={styles.label}>Telemóvel</Text> 
-            <View style={styles.inputWrapper}> 
-              <Feather name="phone" size={14} color="#b0bfcc" style={styles.inputIcon} /> 
-              <TextInput  
-                style={styles.inp}  
-                placeholder="+351 9xx xxx xxx"  
-                placeholderTextColor="#b0bfcc" 
-                keyboardType="phone-pad" 
-                value={phone} 
-                onChangeText={setPhone} 
-              /> 
-            </View> 
- 
-            {/*    Duas colunas lado a lado para as Passwords */} 
+          {/* Campo: Telemóvel */} 
+          <Text style={styles.label}>Telemóvel</Text> 
+          <View style={styles.inputWrapper}> 
+            <Feather name="phone" size={14} color="#b0bfcc" style={styles.inputIcon} /> 
+            <TextInput   
+              style={styles.inp}   
+              placeholder="9xxxxxxxx" 
+              placeholderTextColor="#b0bfcc" 
+              keyboardType="phone-pad" 
+              maxLength={9} 
+              value={phone} 
+              onChangeText={setPhone} 
+            /> 
+          </View> 
+
+            {/* Duas colunas lado a lado para as Passwords */} 
             <View style={styles.gridRow}> 
               {/* Coluna Esquerda: Password */} 
               <View style={{ flex: 1 }}> 
                 <Text style={styles.label}>Password</Text> 
                 <View style={styles.inputWrapper}> 
                   <Feather name="lock" size={14} color="#b0bfcc" style={styles.inputIcon} /> 
-                  <TextInput  
-                    style={[styles.inp, { paddingLeft: 34 }]}  
-                    secureTextEntry 
+                  <TextInput   
+                    style={[styles.inp, { paddingLeft: 34, paddingRight: 35 }]} 
+                    secureTextEntry={securePassword} 
                     placeholder="••••••••" 
                     placeholderTextColor="#b0bfcc" 
                     value={password} 
                     onChangeText={setPassword} 
                   /> 
+                  <TouchableOpacity style={styles.inputIconRight} onPress={() => setSecurePassword(!securePassword)}>
+                      <Feather name={securePassword ? "eye" : "eye-off"} size={14} color="#b0bfcc" />
+                  </TouchableOpacity>
                 </View> 
               </View> 
- 
+
               {/* Coluna Direita: Confirmar */} 
               <View style={{ flex: 1 }}> 
                 <Text style={styles.label}>Confirmar</Text> 
                 <View style={styles.inputWrapper}> 
                   <Ionicons name="lock-closed-outline" size={14} color="#b0bfcc" style={styles.inputIcon} /> 
-                  <TextInput  
-                    style={[styles.inp, { paddingLeft: 34 }]}  
-                    secureTextEntry 
+                  <TextInput   
+                    style={[styles.inp, { paddingLeft: 34, paddingRight: 35 }]} 
+                    secureTextEntry={secureConfirmPassword} 
                     placeholder="••••••••" 
                     placeholderTextColor="#b0bfcc" 
                     value={confirmPassword} 
                     onChangeText={setConfirmPassword} 
                   /> 
+                  <TouchableOpacity style={styles.inputIconRight} onPress={() => setSecureConfirmPassword(!secureConfirmPassword)}>
+                      <Feather name={secureConfirmPassword ? "eye" : "eye-off"} size={14} color="#b0bfcc" />
+                  </TouchableOpacity>
                 </View> 
               </View> 
-            </View> 
-          </View> 
- 
+            </View>
+          </View>
           {/*   BOTÃO PRINCIPAL VERDE */} 
           <TouchableOpacity style={styles.btnP} onPress={testarRegisto} activeOpacity={0.9}> 
             <Text style={styles.btnText}>Criar conta</Text> 
@@ -152,14 +215,15 @@ export default function Register() {
  
           {/*  /  Mensagem de feedback da API */} 
           {resultado !== '' && ( 
-            <Text style={[styles.feedbackText, { color: resultado.startsWith('Erro') ? '#e74c3c' : '#2ecc71' }]}> 
-              {resultado} 
-            </Text> 
+            <Text style={[styles.feedbackText, { color: isError ? '#e74c3c' : '#00a385' }]}> 
+                {resultado} 
+            </Text>
           )} 
  
         </ScrollView> 
       </View> 
     </View> 
+    </KeyboardAvoidingView>
   ); 
 } 
  
@@ -260,4 +324,10 @@ bottomLoginLink: {
 color: '#00a385', 
 fontWeight: '700', 
 }, 
+inputIconRight: { 
+    position: 'absolute', 
+    right: 10, 
+    zIndex: 1, 
+    padding: 5 
+},
 });

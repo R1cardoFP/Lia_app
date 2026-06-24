@@ -1,19 +1,44 @@
-import { Feather } from '@expo/vector-icons'; // Substitui os ícones 'ti' por Feather nativos 
+import { Feather } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
-import { ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import api from '../services/api';
  
 export default function Login() { 
   const [email, setEmail] = useState(''); 
   const [password, setPassword] = useState(''); 
-  const [secureText, setSecureText] = useState(true); // Controla a visibilidade da senha 
+  const [secureText, setSecureText] = useState(true); 
   const [resultado, setResultado] = useState(''); 
+  const [loading, setLoading] = useState(false);
+  const [isError, setIsError] = useState(false);
  
   const testarLogin = async () => { 
+    setLoading(true);
+    setIsError(false);
+    setResultado('');
+
+    
+    const emailTrimmed = email.trim();
+    const passwordTrimmed = password.trim();
+
+    if (!emailTrimmed || !passwordTrimmed) {
+      setResultado('O email e a palavra-passe são obrigatórios.');
+      setIsError(true); 
+      setLoading(false);
+      return;
+    }
+
+    
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(emailTrimmed)) {
+      setResultado('Por favor, introduza um formato de email válido.');
+      setIsError(true); 
+      setLoading(false);
+      return;
+    }
     try { 
-      const response = await api.post('/login', { email, password }); 
+      const response = await api.post('/login', { email: emailTrimmed, password: passwordTrimmed });
       const token = response.data.token; 
  
       if (token) { 
@@ -22,18 +47,22 @@ export default function Login() {
           await AsyncStorage.setItem('userName', response.data.user.name); 
         } 
         setResultado('Login feito com sucesso!'); 
+        setIsError(false);
         router.replace('/(tabs)'); 
       } else { 
-        setResultado('Login feito, mas não recebemos token do servidor.'); 
+        setResultado('Ocorreu um erro inesperado. Por favor, tente novamente.');
+        setIsError(true); 
       } 
     } catch (error: any) { 
+      setIsError(true);
       if (error.response) { 
-        const mensagemErro = error.response.data.message || 'Erro nas credenciais.'; 
-        setResultado(`Erro do Servidor: ${mensagemErro}`); 
+        const mensagemErro = error.response.data.message || 'Credenciais inválidas.'; 
+        setResultado(`${mensagemErro}`); 
       } else { 
-        setResultado('Não foi possível conectar ao servidor. Verifique o IP e a rede.'); 
+        setResultado('Não foi possível conectar ao servidor. Verifique a rede.'); 
       } 
     } 
+    setLoading(false);
   }; 
  
   return ( 
@@ -63,7 +92,7 @@ export default function Login() {
               <Feather name="mail" size={15} color="#b0bfcc" style={styles.inputIconLeft} /> 
               <TextInput 
                 style={styles.inp} 
-                placeholder="utilizador@lia.pt" 
+                placeholder="utilizador@ipvc.pt" 
                 placeholderTextColor="#b0bfcc" 
                 value={email} 
                 onChangeText={setEmail} 
@@ -101,7 +130,7 @@ export default function Login() {
           {/*    Botões de Ação */} 
           <View style={styles.buttonGroup}> 
             <TouchableOpacity style={styles.btnP} onPress={testarLogin} activeOpacity={0.9}> 
-              <Text style={styles.btnTextP}>Entrar</Text> 
+              {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnTextP}>Entrar</Text>}
             </TouchableOpacity> 
  
             <TouchableOpacity style={styles.btnT} onPress={() => router.push('/register')} activeOpacity={0.8}> 
@@ -122,12 +151,11 @@ export default function Login() {
             <Text style={styles.btnSSOText}>SSO Institucional</Text> 
           </TouchableOpacity> 
 */} 
-          {/*  /  Feedback da API */} 
           {resultado !== '' && ( 
-            <Text style={[styles.feedbackText, { color: resultado.startsWith('Erro') ? '#e74c3c' : '#2ecc71' }]}> 
+            <Text style={[styles.feedbackText, { color: isError ? '#e74c3c' : '#2ecc71' }]}> 
               {resultado} 
             </Text> 
-          )} 
+          )}
  
         </ScrollView> 
       </View> 
@@ -141,7 +169,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff', 
   }, 
   header: { 
-    backgroundColor: '#065294', // Azul Escuro original do HTML 
+    backgroundColor: '#065294', 
     paddingHorizontal: 24, 
     paddingBottom: 48, 
     alignItems: 'center', 
@@ -171,7 +199,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff', 
     borderTopLeftRadius: 24, 
     borderTopRightRadius: 24, 
-    marginTop: -20, // Sobrepõe o bloco azul 
+    marginTop: -20, 
     paddingHorizontal: 22, 
     paddingTop: 28, 
   }, 
@@ -227,7 +255,7 @@ const styles = StyleSheet.create({
   }, 
   forgotPasswordText: { 
     fontSize: 12, 
-    color: '#00a385', // Verde água para o link 
+    color: '#00a385',
     fontWeight: '600', 
   }, 
   buttonGroup: { 
@@ -235,7 +263,7 @@ const styles = StyleSheet.create({
     gap: 10, 
   }, 
   btnP: { 
-    backgroundColor: '#065294', // Botão primário azul 
+    backgroundColor: '#065294', 
     borderRadius: 8, 
     paddingVertical: 14, 
     alignItems: 'center', 
@@ -249,7 +277,7 @@ const styles = StyleSheet.create({
   btnT: { 
     backgroundColor: '#fff', 
     borderWidth: 1, 
-    borderColor: '#065294', // Botão secundário transparente com borda azul 
+    borderColor: '#065294', 
     borderRadius: 8, 
     paddingVertical: 14, 
     alignItems: 'center', 
@@ -279,7 +307,7 @@ const styles = StyleSheet.create({
   btnSSO: { 
     width: '100%', 
     backgroundColor: '#f4f7fc', 
-    borderRadius: 50, // Completamente arredondado (estilo pílula) 
+    borderRadius: 50,  
     paddingVertical: 13, 
     flexDirection: 'row', 
     alignItems: 'center', 

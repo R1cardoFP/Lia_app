@@ -1,59 +1,51 @@
+import { useAuth } from "@/hooks/useAuth";
 import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router, useFocusEffect } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import { Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import api from '../../services/api';
 
 
 
 export default function Perfil() {
+  const { user, logout, refreshUser } = useAuth();
   const [userData, setUserData] = useState({ name: 'Carregando...', email: '', role: 'Estudante' });
   const [userInitials, setUserInitials] = useState('');
   const [imageUri, setImageUri] = useState(null);
 
+
+
   useFocusEffect(
     useCallback(() => {
-      carregarDadosUtilizador();
-    }, [])
+      if (user) {
+        processarDadosUtilizador();
+      }
+    }, [user])
   );
 
-  const carregarDadosUtilizador = async () => {
-    try {
-      const token = await AsyncStorage.getItem('userToken');
-      const response = await api.get('/me', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
 
-      const user = response.data;
-      
-      // Mapeamento idêntico à base de dados
-      const TIPOS = { 1: 'Gestor', 2: 'Técnico', 3: 'Orientador', 4: 'Requisitante', 5: 'Bolseiro', 6: 'Visitante' };
+  const processarDadosUtilizador = () => {
+    if (!user) return;
+    const TIPOS = { 1: 'Gestor', 2: 'Técnico', 3: 'Orientador', 4: 'Requisitante', 5: 'Bolseiro', 6: 'Visitante' };
 
-      setUserData({
-        name: user.name || 'Utilizador LIA',
-        email: user.email || 'estudante@ipvc.pt',
-        // Vai buscar o nome correto, se não existir, mostra 'Utilizador'
-        role: user.user_type_id && TIPOS[user.user_type_id] ? TIPOS[user.user_type_id] : 'Utilizador'
-      });
+    setUserData({
+      name: user.name || 'Utilizador LIA',
+      email: user.email || 'estudante@ipvc.pt',
+      role: user.user_type_id && TIPOS[user.user_type_id] ? TIPOS[user.user_type_id] : 'Utilizador'
+    });
 
-      const partesNome = (user.name || '').trim().split(' ');
-      setUserInitials(partesNome.length > 1 
-        ? (partesNome[0][0] + partesNome[partesNome.length - 1][0]).toUpperCase() 
-        : (user.name || 'LI').substring(0, 2).toUpperCase()
-      );
+    const partesNome = (user.name || '').trim().split(' ');
+    setUserInitials(partesNome.length > 1 
+      ? (partesNome[0][0] + partesNome[partesNome.length - 1][0]).toUpperCase() 
+      : (user.name || 'LI').substring(0, 2).toUpperCase()
+    );
 
-      if (user.image) {
-        // IP IGUAL AO DO EDITAR PERFIL!
-        const baseURL = 'http://192.168.1.81:8000';
-        const caminhoImagem = user.image.startsWith('/') ? user.image.substring(1) : user.image;
-        setImageUri(`${baseURL}/${caminhoImagem}`);
-      } else {
-        setImageUri(null);
-      }
-    } catch (error) {
-      console.log('Erro ao carregar dados do perfil:', error);
+    if (user.image) {
+      const baseURL = 'http://192.168.1.81:8000'; // Mantém o teu IP local para as imagens
+      const caminhoImagem = user.image.startsWith('/') ? user.image.substring(1) : user.image;
+      setImageUri(`${baseURL}/${caminhoImagem}`);
+    } else {
+      setImageUri(null);
     }
   };
 
@@ -68,9 +60,7 @@ export default function Perfil() {
           text: "Sair", 
           style: "destructive",
           onPress: async () => {
-            await AsyncStorage.removeItem('userToken');
-            await AsyncStorage.removeItem('userName');
-            router.replace('/login');
+            await logout();
           }
         }
       ]

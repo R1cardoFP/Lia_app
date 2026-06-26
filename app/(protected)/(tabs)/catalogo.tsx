@@ -1,11 +1,25 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { router, useFocusEffect } from 'expo-router'; // <-- Adicionado useFocusEffect
-import React, { useCallback, useEffect, useState } from 'react'; // <-- Adicionado useCallback
+import { useAuth } from "@/hooks/useAuth";
+import { router } from 'expo-router'; // <-- Adicionado useFocusEffect
+import React, { useEffect, useState } from 'react'; // <-- Adicionado useCallback
 import { ActivityIndicator, FlatList, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'; // <-- Adicionado Image e removido SafeAreaView daqui
 import { SafeAreaView } from 'react-native-safe-area-context'; // <-- Adicionado para eliminar o Warning do SafeAreaView
-import api from '../../services/api';
+import api from '../../../services/api';
 
 export default function Catalogo() {
+
+  const { user, logout } = useAuth();
+
+const userName = user?.name || 'Utilizador';
+const partesNome = user?.name?.trim().split(' ') || [];
+const userInitials = partesNome.length > 1 
+  ? (partesNome[0][0] + partesNome[partesNome.length - 1][0]).toUpperCase()
+  : userName.substring(0, 2).toUpperCase();
+
+const baseURL = 'http://:8000'; 
+const imageUri = user?.image 
+  ? `${baseURL}/${user.image.startsWith('/') ? user.image.substring(1) : user.image}`
+  : null;
+  
   const [categoriasDB, setCategoriasDB] = useState([{ id: 'Todos', description: 'Todos' }]);
   const [categoriaAtiva, setCategoriaAtiva] = useState('Todos');
   
@@ -17,59 +31,12 @@ export default function Catalogo() {
   const [paginaAtual, setPaginaAtual] = useState(1);
   const [temMaisPaginas, setTemMaisPaginas] = useState(true);
 
-  // --- NOVOS ESTADOS PARA O UTILIZADOR DINÂMICO ---
-  const [userName, setUserName] = useState('Carregando...');
-  const [userInitials, setUserInitials] = useState('');
-  const [imageUri, setImageUri] = useState(null);
+
 
   useEffect(() => {
     carregarCatalogo(1, 'Todos');
   }, []);
 
-  useFocusEffect(
-    useCallback(() => {
-      carregarDadosUtilizador();
-    }, [])
-  );
-
-  const carregarDadosUtilizador = async () => {
-    try {
-      const token = await AsyncStorage.getItem('userToken');
-      const response = await api.get('/me', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
-      const user = response.data;
-
-      // 1. Atualizar Nome
-      if (user.name) {
-        setUserName(user.name);
-        
-        // Calcular Iniciais
-        const partesNome = user.name.trim().split(' ');
-        if (partesNome.length > 1) {
-          setUserInitials((partesNome[0][0] + partesNome[partesNome.length - 1][0]).toUpperCase());
-        } else {
-          setUserInitials(user.name.substring(0, 2).toUpperCase());
-        }
-      }
-
-      // 2. Atualizar Imagem de Perfil
-      if (user.image) {
-        const baseURL = 'http://192.168.1.81:8000'; 
-        
-        const caminhoImagem = user.image.startsWith('/') ? user.image.substring(1) : user.image;
-        const urlFinal = `${baseURL}/${caminhoImagem}`;
-        
-        console.log('LINK DA FOTO NO CATÁLOGO:', urlFinal); // <-- VÊ ESTE LOG NO TERMINAL!
-        setImageUri(urlFinal);
-      } else {
-        setImageUri(null);
-      }
-    } catch (error) {
-      console.log('Erro ao carregar dados do utilizador no catálogo:', error);
-    }
-  };
 
   const carregarCatalogo = async (numeroPagina, catId = categoriaAtiva) => {
     if (loadingMore) return;
@@ -78,12 +45,8 @@ export default function Catalogo() {
     try {
       if (numeroPagina === 1) setLoadingInitial(true);
       else setLoadingMore(true);
-
-      const token = await AsyncStorage.getItem('userToken');
       
-      const response = await api.get(`/catalogo?page=${numeroPagina}&categoria_id=${catId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await api.get(`/catalogo?page=${numeroPagina}&categoria_id=${catId}`);
 
       if (response.data.status === 'success') {
         const novosDados = response.data.data;
@@ -106,9 +69,12 @@ export default function Catalogo() {
         setPaginaAtual(novosDados.paginacao.pagina_atual);
         setTemMaisPaginas(novosDados.paginacao.tem_mais);
       }
-    } catch (error) {
-      console.log('Erro ao carregar catálogo:', error);
-    } finally {
+    } catch (error: any) {
+  console.log('Erro ao carregar catálogo:', error);
+  if (error.response?.status === 401) {
+    logout(); // Se o token expirou, manda para o login e para o loop
+  }
+} finally {
       setLoadingInitial(false);
       setLoadingMore(false);
     }

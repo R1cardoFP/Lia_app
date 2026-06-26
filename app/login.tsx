@@ -1,11 +1,13 @@
+import { useAuth } from "@/hooks/useAuth";
 import { Feather } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
 import { ActivityIndicator, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import api from '../services/api';
+
  
 export default function Login() { 
+  const { login } = useAuth(); 
+  
   const [email, setEmail] = useState(''); 
   const [password, setPassword] = useState(''); 
   const [secureText, setSecureText] = useState(true); 
@@ -18,7 +20,6 @@ export default function Login() {
     setIsError(false);
     setResultado('');
 
-    
     const emailTrimmed = email.trim();
     const passwordTrimmed = password.trim();
 
@@ -29,7 +30,6 @@ export default function Login() {
       return;
     }
 
-    
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(emailTrimmed)) {
       setResultado('Por favor, introduza um formato de email válido.');
@@ -37,22 +37,14 @@ export default function Login() {
       setLoading(false);
       return;
     }
+
     try { 
-      const response = await api.post('/login', { email: emailTrimmed, password: passwordTrimmed });
-      const token = response.data.token; 
- 
-      if (token) { 
-        await AsyncStorage.setItem('userToken', token); 
-        if (response.data.user && response.data.user.name) { 
-          await AsyncStorage.setItem('userName', response.data.user.name); 
-        } 
-        setResultado('Login feito com sucesso!'); 
-        setIsError(false);
-        router.replace('/(tabs)'); 
-      } else { 
-        setResultado('Ocorreu um erro inesperado. Por favor, tente novamente.');
-        setIsError(true); 
-      } 
+      // 3. CHAMA A FUNÇÃO DO CONTEXTO EM VEZ DO API.POST DIRETO
+      // Ela já vai bater no Laravel, validar, guardar no SecureStore e redirecionar!
+      await login(emailTrimmed, passwordTrimmed);
+      
+      setResultado('Login feito com sucesso!'); 
+      setIsError(false);
     } catch (error: any) { 
       setIsError(true);
       if (error.response) { 
@@ -61,16 +53,16 @@ export default function Login() {
       } else { 
         setResultado('Não foi possível conectar ao servidor. Verifique a rede.'); 
       } 
-    } 
-    setLoading(false);
+    } finally {
+      setLoading(false);
+    }
   }; 
  
   return ( 
     <View style={styles.container}> 
-      {/* Ajusta a barra de estado para combinar com o topo azul escuro */} 
       <StatusBar barStyle="light-content" backgroundColor="#065294" /> 
  
-      {/*   BLOCO SUPERIOR AZUL (#065294) */} 
+      {/* BLOCO SUPERIOR AZUL */} 
       <View style={styles.header}> 
         <View style={styles.logoIconContainer}> 
           <Feather name="camera" size={28} color="#fff" /> 
@@ -79,14 +71,14 @@ export default function Login() {
         <Text style={styles.headerSubtitle}>Equipamentos Audiovisuais</Text> 
       </View> 
  
-      {/*    BLOCO BRANCO INFERIOR OVERLAP */} 
+      {/* BLOCO BRANCO INFERIOR */} 
       <View style={styles.formContainer}> 
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 30 }}> 
            
           <Text style={styles.welcomeText}>Bem-vindo de volta</Text> 
  
           <View style={styles.inputGroup}> 
-            {/*       Campo Email */} 
+            {/* Campo Email */} 
             <Text style={styles.label}>Email</Text> 
             <View style={styles.inputWrapper}> 
               <Feather name="mail" size={15} color="#b0bfcc" style={styles.inputIconLeft} /> 
@@ -101,7 +93,7 @@ export default function Login() {
               /> 
             </View> 
  
-            {/*     Campo Palavra-passe */} 
+            {/* Campo Palavra-passe */} 
             <Text style={styles.label}>Palavra-passe</Text> 
             <View style={styles.inputWrapper}> 
               <Feather name="lock" size={15} color="#b0bfcc" style={styles.inputIconLeft} /> 
@@ -122,12 +114,12 @@ export default function Login() {
             </View> 
           </View> 
  
-          {/*   Esqueceu a palavra-passe */} 
+          {/* Esqueceu a palavra-passe */} 
           <TouchableOpacity style={styles.forgotPasswordContainer} activeOpacity={0.7}> 
             <Text style={styles.forgotPasswordText}>Esqueceu a palavra-passe?</Text> 
           </TouchableOpacity> 
  
-          {/*    Botões de Ação */} 
+          {/* Botões de Ação */} 
           <View style={styles.buttonGroup}> 
             <TouchableOpacity style={styles.btnP} onPress={testarLogin} activeOpacity={0.9}> 
               {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.btnTextP}>Entrar</Text>}
@@ -138,19 +130,6 @@ export default function Login() {
             </TouchableOpacity> 
           </View> 
  
-          {/*  
-          <View style={styles.dividerRow}> 
-            <View style={styles.dividerLine} /> 
-            <Text style={styles.dividerText}>ou</Text> 
-            <View style={styles.dividerLine} /> 
-          </View> 
-          */} 
-          {/*  
-          <TouchableOpacity style={styles.btnSSO} activeOpacity={0.8}> 
-            <Feather name="home" size={16} color="#3a5a7a" style={{ marginRight: 8 }} /> 
-            <Text style={styles.btnSSOText}>SSO Institucional</Text> 
-          </TouchableOpacity> 
-*/} 
           {resultado !== '' && ( 
             <Text style={[styles.feedbackText, { color: isError ? '#e74c3c' : '#2ecc71' }]}> 
               {resultado} 
@@ -161,7 +140,7 @@ export default function Login() {
       </View> 
     </View> 
   ); 
-} 
+}
  
 const styles = StyleSheet.create({ 
   container: { 

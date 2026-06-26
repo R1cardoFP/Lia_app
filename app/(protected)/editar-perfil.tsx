@@ -1,11 +1,11 @@
+import { useAuth } from "@/hooks/useAuth";
 import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
 import { router, Stack, useFocusEffect } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import api from '../services/api';
+import api from '../../services/api';
 
 // 1. CARGOS ATUALIZADOS DA TUA BASE DE DADOS
 const TIPOS_UTILIZADOR = [
@@ -25,6 +25,7 @@ const InputGroup = ({ label, value, onChangeText, keyboardType = 'default', edit
 );
 
 export default function EditarPerfil() {
+  const { user, refreshUser } = useAuth();
   const [nome, setNome] = useState('');
   const [telemovel, setTelemovel] = useState('');
   const [curso, setCurso] = useState('');
@@ -37,14 +38,14 @@ export default function EditarPerfil() {
   const [modalVisivel, setModalVisivel] = useState(false);
 
   useFocusEffect(
-    useCallback(() => { carregarDados(); }, [])
-  );
+  useCallback(() => { carregarDados(); }, [user]) // <-- Adicionado o user aqui
+);
 
-  const carregarDados = async () => {
+  
+    const carregarDados = () => {
+    if (!user) return;
     try {
-      const token = await AsyncStorage.getItem('userToken');
-      const response = await api.get('/me', { headers: { Authorization: `Bearer ${token}` } });
-      const user = response.data;
+     
       
       setNome(user.name || '');
       setTelemovel(user.phone?.toString() || ''); 
@@ -96,7 +97,7 @@ export default function EditarPerfil() {
   const guardarAlteracoes = async () => {
     setGuardando(true);
     try {
-      const token = await AsyncStorage.getItem('userToken');
+      
       const formData = new FormData();
       formData.append('name', nome);
       formData.append('phone', telemovel);
@@ -113,11 +114,11 @@ export default function EditarPerfil() {
       }
 
       const response = await api.post('/perfil/edit', formData, {
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' }
-      });
+      headers: { 'Content-Type': 'multipart/form-data' } // <-- Só ficou o Content-Type
+    });
 
       if (response.data.status === 'success') {
-        await AsyncStorage.setItem('userName', nome);
+        await refreshUser();
         Alert.alert('Sucesso', 'Perfil atualizado!', [{ text: 'OK', onPress: () => router.back() }]);
       }
     } catch (error) {

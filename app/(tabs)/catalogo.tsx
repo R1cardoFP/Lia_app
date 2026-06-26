@@ -225,14 +225,16 @@ export default function Catalogo() {
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={renderHeader}
         renderItem={({ item }) => (
-          <View style={styles.cardLista}>
-            <View style={styles.imagemListaMock} />
-            <View style={styles.listaTextoInfo}>
-              <Text style={styles.cardTitulo} numberOfLines={1}>{item.nome}</Text>
-              <Text style={styles.cardSubtitulo} numberOfLines={1}>{item.model}</Text>
+          <TouchableOpacity activeOpacity={0.8} onPress={() => router.push(`/detalhes/${item.id}`)}>
+            <View style={styles.cardLista}>
+              <View style={styles.imagemListaMock} />
+              <View style={styles.listaTextoInfo}>
+                <Text style={styles.cardTitulo} numberOfLines={1}>{item.nome}</Text>
+                <Text style={styles.cardSubtitulo} numberOfLines={1}>{item.model}</Text>
+              </View>
+              <BadgeDisponibilidade quantidade={item.item_unities_count} />
             </View>
-            <BadgeDisponibilidade quantidade={item.item_unities_count} />
-          </View>
+          </TouchableOpacity>
         )}
         onEndReached={aoChegarAoFimDaLista}
         onEndReachedThreshold={0.1} 

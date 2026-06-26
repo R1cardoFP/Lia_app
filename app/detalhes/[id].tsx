@@ -1,0 +1,172 @@
+import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Calendar, LocaleConfig } from 'react-native-calendars';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import api from '../../services/api';
+
+LocaleConfig.locales['pt'] = {
+  monthNames: ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'],
+  monthNamesShort: ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'],
+  dayNames: ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'],
+  dayNamesShort: ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'],
+  today: 'Hoje'
+};
+LocaleConfig.defaultLocale = 'pt';
+
+export default function DetalhesEquipamento() {
+  const { id } = useLocalSearchParams();
+  const router = useRouter();
+  
+  // Esta função deteta o tamanho da barra de navegação do telemóvel!
+  const insets = useSafeAreaInsets(); 
+  
+  const [item, setItem] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    carregarDetalhes();
+  }, [id]);
+
+  const carregarDetalhes = async () => {
+    try {
+      const token = await AsyncStorage.getItem('userToken');
+      const response = await api.get(`/item/${id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (response.data.status === 'success') {
+        setItem(response.data.data);
+      }
+    } catch (error) {
+      console.log('Erro ao carregar detalhes:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color="#005596" />
+      </View>
+    );
+  }
+
+  if (!item) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <Text>Equipamento não encontrado.</Text>
+        <TouchableOpacity onPress={() => router.back()} style={{ marginTop: 20 }}>
+          <Text style={{ color: '#005596' }}>Voltar atrás</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
+
+  return (
+    <View style={styles.containerPrincipal}>
+      <Stack.Screen options={{ headerShown: false }} />
+
+      <ScrollView showsVerticalScrollIndicator={false} style={styles.scrollArea}>
+        <View style={styles.imageContainer}>
+          <TouchableOpacity 
+            style={[styles.backButton, { top: Math.max(insets.top + 10, 40) }]} 
+            onPress={() => router.back()}
+          >
+            <Ionicons name="arrow-back" size={24} color="#FFF" />
+          </TouchableOpacity>
+          
+          {item.image ? (
+            <Image source={{ uri: `http://192.168.1.81:8000/${item.image}` }} style={styles.coverImage} />
+          ) : (
+            <View style={[styles.coverImage, { backgroundColor: '#E0E0E0', justifyContent: 'center', alignItems: 'center' }]}>
+              <Ionicons name="camera-outline" size={60} color="#9E9E9E" />
+            </View>
+          )}
+        </View>
+
+        <View style={styles.infoContainer}>
+          <View style={styles.tituloRow}>
+            <Text style={styles.nomeItem}>{item.nome || 'Equipamento'}</Text>
+            <View style={styles.badgeDisponivel}>
+              <Text style={styles.badgeText}>{item.quantidade || 1} Unid.</Text>
+            </View>
+          </View>
+          
+          <Text style={styles.modeloItem}>Modelo: {item.model || 'N/A'}</Text>
+          
+          <View style={styles.divider} />
+
+          <View style={styles.detalheRow}>
+            <Ionicons name="folder-open-outline" size={20} color="#546E7A" />
+            <Text style={styles.detalheTexto}>Categoria: {item.categoria || 'Geral'}</Text>
+          </View>
+
+          <View style={styles.detalheRow}>
+            <Ionicons name="information-circle-outline" size={20} color="#546E7A" />
+            <Text style={styles.detalheTexto}>Observação: {item.observacao || 'Sem observações'}</Text>
+          </View>
+
+          <Text style={styles.seccaoTitulo}>Acessórios</Text>
+          <Text style={styles.descricaoTexto}>{item.acessorios || 'Sem acessórios listados.'}</Text>
+
+          <View style={styles.divider} />
+          <Text style={styles.seccaoTitulo}>Disponibilidade</Text>
+          
+          <View style={styles.calendarioContainer}>
+            <Calendar
+              theme={{
+                todayTextColor: '#005596',
+                arrowColor: '#005596',
+                textMonthFontWeight: 'bold',
+              }}
+            />
+          </View>
+          <Text style={styles.calendarioNota}>Não existem reservas registadas deste item, todos os dias estão disponíveis.</Text>
+
+          <View style={{ height: 120 }} />
+        </View>
+      </ScrollView>
+
+      <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom + 10, 20) }]}>
+        <View>
+          <Text style={styles.precoLabel}>Preço</Text>
+          <Text style={styles.precoValor}>{item.preco || '20,00'} € / dia</Text>
+        </View>
+        <TouchableOpacity style={styles.btnReservar} onPress={() => console.log('Abrir modal de reserva')}>
+          <Ionicons name="cart-outline" size={20} color="#FFF" style={{ marginRight: 8 }} />
+          <Text style={styles.btnReservarText}>Reservar</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  containerPrincipal: { flex: 1, backgroundColor: '#FFF' },
+  scrollArea: { flex: 1 },
+  imageContainer: { width: '100%', height: 320, position: 'relative' },
+  coverImage: { width: '100%', height: '100%' },
+  backButton: { position: 'absolute', left: 20, zIndex: 10, width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
+  infoContainer: { padding: 20, borderTopLeftRadius: 24, borderTopRightRadius: 24, backgroundColor: '#FFF', marginTop: -30, elevation: 5, shadowColor: '#000', shadowOffset: { width: 0, height: -2 }, shadowOpacity: 0.1, shadowRadius: 10 },
+  tituloRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 },
+  nomeItem: { fontSize: 22, fontWeight: 'bold', color: '#212121', flex: 1, marginRight: 10 },
+  badgeDisponivel: { backgroundColor: '#E8F5E9', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 12 },
+  badgeText: { color: '#2E7D32', fontWeight: 'bold', fontSize: 12 },
+  modeloItem: { fontSize: 16, color: '#757575', marginBottom: 10 },
+  divider: { height: 1, backgroundColor: '#EEEEEE', marginVertical: 20 },
+  detalheRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
+  detalheTexto: { fontSize: 15, color: '#424242', marginLeft: 10, flex: 1 },
+  seccaoTitulo: { fontSize: 18, fontWeight: 'bold', color: '#212121', marginBottom: 10, marginTop: 10 },
+  descricaoTexto: { fontSize: 15, color: '#616161', lineHeight: 22 },
+  calendarioContainer: { borderWidth: 1, borderColor: '#EEEEEE', borderRadius: 12, overflow: 'hidden', marginTop: 10 },
+  calendarioNota: { fontSize: 13, color: '#9E9E9E', textAlign: 'center', marginTop: 15, fontStyle: 'italic' },
+  bottomBar: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#FFF', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 15, borderTopWidth: 1, borderTopColor: '#EEEEEE', elevation: 15, shadowColor: '#000', shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.1, shadowRadius: 10 },
+  precoLabel: { fontSize: 13, color: '#757575', marginBottom: 2 },
+  precoValor: { fontSize: 20, fontWeight: 'bold', color: '#005596' },
+  btnReservar: { backgroundColor: '#005596', flexDirection: 'row', paddingHorizontal: 25, paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
+  btnReservarText: { color: '#FFF', fontSize: 16, fontWeight: 'bold' }
+});

@@ -1,8 +1,9 @@
+import { Ionicons } from '@expo/vector-icons'; // <-- ADICIONADO PARA OS ÍCONES
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { router, useFocusEffect } from 'expo-router'; // <-- Adicionado useFocusEffect
-import React, { useCallback, useEffect, useState } from 'react'; // <-- Adicionado useCallback
-import { ActivityIndicator, FlatList, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'; // <-- Adicionado Image e removido SafeAreaView daqui
-import { SafeAreaView } from 'react-native-safe-area-context'; // <-- Adicionado para eliminar o Warning do SafeAreaView
+import { router, useFocusEffect } from 'expo-router';
+import React, { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, FlatList, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import api from '../../services/api';
 
 export default function Catalogo() {
@@ -17,7 +18,6 @@ export default function Catalogo() {
   const [paginaAtual, setPaginaAtual] = useState(1);
   const [temMaisPaginas, setTemMaisPaginas] = useState(true);
 
-  // --- NOVOS ESTADOS PARA O UTILIZADOR DINÂMICO ---
   const [userName, setUserName] = useState('Carregando...');
   const [userInitials, setUserInitials] = useState('');
   const [imageUri, setImageUri] = useState(null);
@@ -41,11 +41,8 @@ export default function Catalogo() {
 
       const user = response.data;
 
-      // 1. Atualizar Nome
       if (user.name) {
         setUserName(user.name);
-        
-        // Calcular Iniciais
         const partesNome = user.name.trim().split(' ');
         if (partesNome.length > 1) {
           setUserInitials((partesNome[0][0] + partesNome[partesNome.length - 1][0]).toUpperCase());
@@ -54,14 +51,8 @@ export default function Catalogo() {
         }
       }
 
-      // 2. Atualizar Imagem de Perfil
       if (user.image) {
-        const baseURL = 'http://192.168.1.81:8000'; 
-        
-        const caminhoImagem = user.image.startsWith('/') ? user.image.substring(1) : user.image;
-        const urlFinal = `${baseURL}/${caminhoImagem}`;
-        
-        console.log('LINK DA FOTO NO CATÁLOGO:', urlFinal); // <-- VÊ ESTE LOG NO TERMINAL!
+        const urlFinal = obterUrlImagem(user.image);
         setImageUri(urlFinal);
       } else {
         setImageUri(null);
@@ -69,6 +60,14 @@ export default function Catalogo() {
     } catch (error) {
       console.log('Erro ao carregar dados do utilizador no catálogo:', error);
     }
+  };
+
+  // --- FUNÇÃO AUXILIAR PARA CRIAR O LINK DA IMAGEM ---
+  const obterUrlImagem = (caminho) => {
+    if (!caminho) return null;
+    const baseURL = 'http://192.168.1.81:8000';
+    const caminhoLimpo = caminho.startsWith('/') ? caminho.substring(1) : caminho;
+    return `${baseURL}/${caminhoLimpo}`;
   };
 
   const carregarCatalogo = async (numeroPagina, catId = categoriaAtiva) => {
@@ -161,7 +160,6 @@ export default function Catalogo() {
           style={styles.avatarContainer} 
           onPress={() => router.push('/perfil')} 
         >
-          {/* --- AVATAR DINÂMICO: IMAGEM VS INICIAIS --- */}
           {imageUri ? (
             <Image source={{ uri: imageUri }} style={styles.imageAvatar} />
           ) : (
@@ -189,12 +187,23 @@ export default function Catalogo() {
           <Text style={styles.sectionTitle}>EM DESTAQUE (KITS)</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.destaquesContainer}>
             {destaquesKits.map((kit) => (
-              <View key={kit.id} style={styles.cardDestaque}>
-                <View style={styles.imagemDestaqueMock} />
-                <Text style={styles.cardTitulo} numberOfLines={1}>{kit.name}</Text>
-                <Text style={styles.cardSubtitulo} numberOfLines={1}>{kit.description}</Text>
-                <BadgeDisponibilidade quantidade={kit.kit_unities_count} />
-              </View>
+              <TouchableOpacity key={kit.id} activeOpacity={0.8} onPress={() => router.push(`/detalhes/${kit.id}`)}>
+                <View style={styles.cardDestaque}>
+                  
+                  {/* --- IMAGEM DO DESTAQUE --- */}
+                  {kit.image ? (
+                    <Image source={{ uri: obterUrlImagem(kit.image) }} style={styles.imagemDestaqueMock} />
+                  ) : (
+                    <View style={[styles.imagemDestaqueMock, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#F5F5F5' }]}>
+                      <Ionicons name="camera-outline" size={30} color="#B0BEC5" />
+                    </View>
+                  )}
+
+                  <Text style={styles.cardTitulo} numberOfLines={1}>{kit.nome || kit.name}</Text>
+                  <Text style={styles.cardSubtitulo} numberOfLines={1}>{kit.description || kit.model}</Text>
+                  <BadgeDisponibilidade quantidade={kit.kit_unities_count || kit.item_unities_count} />
+                </View>
+              </TouchableOpacity>
             ))}
           </ScrollView>
         </>
@@ -227,7 +236,16 @@ export default function Catalogo() {
         renderItem={({ item }) => (
           <TouchableOpacity activeOpacity={0.8} onPress={() => router.push(`/detalhes/${item.id}`)}>
             <View style={styles.cardLista}>
-              <View style={styles.imagemListaMock} />
+              
+              {/* --- IMAGEM DO EQUIPAMENTO DA LISTA --- */}
+              {item.image ? (
+                <Image source={{ uri: obterUrlImagem(item.image) }} style={styles.imagemListaMock} />
+              ) : (
+                <View style={[styles.imagemListaMock, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#F5F5F5' }]}>
+                   <Ionicons name="camera-outline" size={24} color="#B0BEC5" />
+                </View>
+              )}
+
               <View style={styles.listaTextoInfo}>
                 <Text style={styles.cardTitulo} numberOfLines={1}>{item.nome}</Text>
                 <Text style={styles.cardSubtitulo} numberOfLines={1}>{item.model}</Text>
@@ -248,7 +266,6 @@ export default function Catalogo() {
     </SafeAreaView>
   );
 }
-
 
 const styles = StyleSheet.create({
   safeArea: {

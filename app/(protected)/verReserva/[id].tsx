@@ -1,28 +1,40 @@
-import api from "@/services/api";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import api from "../../../services/api"; // Ajusta o caminho do import se necessário
+
+type PivotData = {
+  quantity: number;
+};
 
 type ItemReservado = {
   id: number;
-  name: string;
+  name?: string;
+  nome?: string;
   model: string;
   category: string;
+  pivot?: PivotData;
+  quantity?: number;
 };
 
 type KitReservado = {
   id: number;
   name: string;
   description: string;
+  pivot?: PivotData;
+  quantity?: number;
 };
 
 type DetalheReserva = {
   id: number;
+  description: string;
   reserve_state_id: number;
   start_date: string;
   end_date: string;
-  items: ItemReservado[];
-  kits: KitReservado[];
+  items?: ItemReservado[];
+  item_reserves?: any[]; // Fallback para a relação padrão do Laravel
+  kits?: KitReservado[];
+  kit_reserves?: any[];  // Fallback para a relação padrão do Laravel
 };
 
 export default function DetalheReservaPage() {
@@ -60,13 +72,11 @@ export default function DetalheReservaPage() {
       case 7:
         return { texto: 'entregue', sc: 'rgba(0, 163, 133, 0.12)', tc: '#00a385' };
       case 5:
-        return { texto: 'concluida', sc: 'rgba(0, 163, 133, 0.12)', tc: '#00a385' };
       case 6:
         return { texto: 'Concluída', sc: 'rgba(192, 80, 96, 0.12)', tc: '#c05060' };
       case 8:
-        return { texto: 'devolvido', sc: 'rgba(0, 163, 133, 0.12)', tc: '#00a385' };
       case 9:
-        return { texto: 'Devolvido (Fora do Prazo)', sc: 'rgba(0, 163, 133, 0.12)', tc: '#00a385' };
+        return { texto: 'Devolvido', sc: 'rgba(0, 163, 133, 0.12)', tc: '#00a385' };
       case 3:
         return { texto: 'recusada', sc: 'rgba(192, 80, 96, 0.12)', tc: '#c05060' };
       default:
@@ -96,20 +106,27 @@ export default function DetalheReservaPage() {
     return (
       <View style={styles.containerLoading}>
         <Text style={styles.errorText}>Não foi possível encontrar os dados desta reserva.</Text>
+        <TouchableOpacity onPress={() => router.back()} style={{ marginTop: 20 }}>
+          <Text style={{ color: '#065294', fontWeight: 'bold' }}>Voltar Atrás</Text>
+        </TouchableOpacity>
       </View>
     );
   }
 
   const uiStatus = getStatusStyles(reserva.reserve_state_id);
+  
+  // Normalização das listas para lidar com os diferentes formatos que o Laravel pode enviar
+  const listaItens = reserva.items || (reserva.item_reserves ? reserva.item_reserves.map(ir => ({ ...ir.item, quantity: ir.quantity })) : []);
+  const listaKits = reserva.kits || (reserva.kit_reserves ? reserva.kit_reserves.map(kr => ({ ...kr.kit, quantity: kr.quantity })) : []);
 
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       {/* Botão de Voltar */}
-      <View style={styles.navHeader}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Text style={styles.backButtonText}>← Voltar</Text>
-        </TouchableOpacity>
-      </View>
+      <Stack.Screen options={{ 
+      title: `Reserva #${id}`, 
+      headerShown: true,
+      headerTitleAlign: 'center' 
+    }} />
 
       {/* Bloco de Resumo Superior */}
       <View style={styles.cardInfoPrincipal}>
@@ -125,166 +142,92 @@ export default function DetalheReservaPage() {
         <Text style={styles.textoDataReal}>
           📅 {formatarDataCompleta(reserva.start_date, reserva.end_date)}
         </Text>
+
+        {/* Motivo da Reserva */}
+        <View style={styles.motivoContainer}>
+          <Text style={styles.labelSecundario}>MOTIVO / JUSTIFICAÇÃO</Text>
+          <Text style={styles.motivoTexto}>{reserva.description || 'Sem motivo especificado.'}</Text>
+        </View>
       </View>
 
       {/* Itens Isolados */}
-      {reserva.items && reserva.items.length > 0 && (
+      {listaItens.length > 0 && (
         <View style={styles.sectionContainer}>
           <Text style={styles.sectionTitle}>ITENS INDIVIDUAIS</Text>
-          {reserva.items.map((item) => (
-            <View key={`item-${item.id}`} style={styles.cardEquipamento}>
-              <View style={styles.detalhesEquipamento}>
-                <Text style={styles.nomeEquipamento} numberOfLines={1}>{item.name}</Text>
-                <Text style={styles.infoMeta}>Modelo: <Text style={styles.infoMetaValor}>{item.model}</Text></Text>
-                <Text style={styles.infoMeta}>Categoria: <Text style={styles.infoMetaValor}>{item.category}</Text></Text>
+          {listaItens.map((item: any, index: number) => {
+            const quantidade = item.quantity || item.pivot?.quantity || 1;
+            return (
+              <View key={`item-${item.id}-${index}`} style={styles.cardEquipamento}>
+                <View style={styles.detalhesEquipamento}>
+                  <Text style={styles.nomeEquipamento} numberOfLines={1}>{item.name || item.nome}</Text>
+                  <Text style={styles.infoMeta}>Modelo: <Text style={styles.infoMetaValor}>{item.model}</Text></Text>
+                </View>
+                {/* Badge de Quantidade */}
+                <View style={styles.badgeQtd}>
+                  <Text style={styles.badgeQtdText}>{quantidade}x</Text>
+                </View>
               </View>
-            </View>
-          ))}
+            );
+          })}
         </View>
       )}
 
       {/* Kits Reservados */}
-      {reserva.kits && reserva.kits.length > 0 && (
+      {listaKits.length > 0 && (
         <View style={styles.sectionContainer}>
           <Text style={styles.sectionTitle}>KITS DE EQUIPAMENTO</Text>
-          {reserva.kits.map((kit) => (
-            <View key={`kit-${kit.id}`} style={styles.cardEquipamento}>
-              <View style={styles.detalhesEquipamento}>
-                <Text style={styles.nomeEquipamento} numberOfLines={1}>{kit.name}</Text>
-                <Text style={styles.descricaoKit} numberOfLines={2}>
-                  {kit.description || "Sem descrição disponível para este kit."}
-                </Text>
+          {listaKits.map((kit: any, index: number) => {
+            const quantidade = kit.quantity || kit.pivot?.quantity || 1;
+            return (
+              <View key={`kit-${kit.id}-${index}`} style={styles.cardEquipamento}>
+                <View style={styles.detalhesEquipamento}>
+                  <Text style={styles.nomeEquipamento} numberOfLines={1}>{kit.name || kit.nome}</Text>
+                  <Text style={styles.descricaoKit} numberOfLines={2}>
+                    {kit.description || "Sem descrição disponível."}
+                  </Text>
+                </View>
+                {/* Badge de Quantidade */}
+                <View style={styles.badgeQtd}>
+                  <Text style={styles.badgeQtdText}>{quantidade}x</Text>
+                </View>
               </View>
-            </View>
-          ))}
+            );
+          })}
         </View>
       )}
+      <View style={{ height: 40 }} />
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
-    backgroundColor: '#f4f7fc' 
-  },
-  containerLoading: { 
-    flex: 1, 
-    backgroundColor: '#f4f7fc', 
-    justifyContent: 'center', 
-    alignItems: 'center',
-    padding: 20
-  },
-  errorText: {
-    color: '#7a94aa',
-    fontSize: 14,
-    textAlign: 'center'
-  },
-  navHeader: {
-    paddingHorizontal: 16,
-    paddingTop: 16,
-    paddingBottom: 8
-  },
-  backButton: {
-    alignSelf: 'flex-start',
-    paddingVertical: 4
-  },
-  backButtonText: {
-    color: '#065294',
-    fontSize: 14,
-    fontWeight: '600'
-  },
-  cardInfoPrincipal: {
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    marginHorizontal: 14,
-    marginTop: 8,
-    marginBottom: 16,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#eaf0f8'
-  },
-  labelSecundario: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#8a9fb4',
-    letterSpacing: 0.5
-  },
-  statusRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginTop: 10,
-    marginBottom: 6
-  },
-  tituloDataTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#0d1f30'
-  },
-  textoDataReal: {
-    fontSize: 13,
-    color: '#3a5068',
-    fontWeight: '500',
-    marginTop: 4
-  },
-  sectionContainer: {
-    paddingHorizontal: 14,
-    marginBottom: 12
-  },
-  sectionTitle: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#3a5068',
-    letterSpacing: 0.4,
-    marginBottom: 10
-  },
-  cardEquipamento: {
-    backgroundColor: '#fff',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: '#eaf0f8',
-    padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8
-  },
-  detalhesEquipamento: {
-    flex: 1,
-    justifyContent: 'center'
-  },
-  nomeEquipamento: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#0d1f30',
-    marginBottom: 4
-  },
-  infoMeta: {
-    fontSize: 11,
-    color: '#8a9fb4',
-    marginTop: 2
-  },
-  infoMetaValor: {
-    color: '#3a5068',
-    fontWeight: '600'
-  },
-  descricaoKit: {
-    fontSize: 12,
-    color: '#5a7a9a',
-    lineHeight: 16,
-    marginTop: 2
-  },
-  badge: { 
-    paddingHorizontal: 10, 
-    paddingVertical: 4, 
-    borderRadius: 12,
-    borderWidth: 1,
-    minWidth: 85,
-    alignItems: 'center'
-  },
-  badgeText: { 
-    fontSize: 10, 
-    fontWeight: '700',
-    textTransform: 'lowercase'
-  }
+  container: { flex: 1, backgroundColor: '#f4f7fc' },
+  containerLoading: { flex: 1, backgroundColor: '#f4f7fc', justifyContent: 'center', alignItems: 'center', padding: 20 },
+  errorText: { color: '#7a94aa', fontSize: 14, textAlign: 'center' },
+  navHeader: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 },
+  backButton: { alignSelf: 'flex-start', paddingVertical: 4 },
+  backButtonText: { color: '#065294', fontSize: 14, fontWeight: '600' },
+  cardInfoPrincipal: { backgroundColor: '#fff', borderRadius: 14, marginHorizontal: 14, marginTop: 8, marginBottom: 16, padding: 16, borderWidth: 1, borderColor: '#eaf0f8' },
+  labelSecundario: { fontSize: 11, fontWeight: '700', color: '#8a9fb4', letterSpacing: 0.5 },
+  statusRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, marginBottom: 6 },
+  tituloDataTitle: { fontSize: 18, fontWeight: '800', color: '#0d1f30' },
+  textoDataReal: { fontSize: 13, color: '#3a5068', fontWeight: '500', marginTop: 4 },
+  
+  motivoContainer: { marginTop: 15, paddingTop: 15, borderTopWidth: 1, borderTopColor: '#eaf0f8' },
+  motivoTexto: { fontSize: 14, color: '#3a5068', marginTop: 6, lineHeight: 20 },
+
+  sectionContainer: { paddingHorizontal: 14, marginBottom: 12 },
+  sectionTitle: { fontSize: 11, fontWeight: '700', color: '#3a5068', letterSpacing: 0.4, marginBottom: 10 },
+  cardEquipamento: { backgroundColor: '#fff', borderRadius: 14, borderWidth: 1, borderColor: '#eaf0f8', padding: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
+  detalhesEquipamento: { flex: 1, justifyContent: 'center', paddingRight: 10 },
+  nomeEquipamento: { fontSize: 14, fontWeight: '700', color: '#0d1f30', marginBottom: 4 },
+  infoMeta: { fontSize: 11, color: '#8a9fb4', marginTop: 2 },
+  infoMetaValor: { color: '#3a5068', fontWeight: '600' },
+  descricaoKit: { fontSize: 12, color: '#5a7a9a', lineHeight: 16, marginTop: 2 },
+  
+  badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, borderWidth: 1, minWidth: 85, alignItems: 'center' },
+  badgeText: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase' },
+  
+  badgeQtd: { backgroundColor: '#f4f7fc', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: '#eaf0f8' },
+  badgeQtdText: { color: '#065294', fontWeight: 'bold', fontSize: 14 }
 });

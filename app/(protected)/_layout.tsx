@@ -33,7 +33,15 @@ export default function ProtectedLayout() {
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}> 
       <Stack> 
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} /> 
-      </Stack> 
+
+      <Stack.Screen 
+          name="detalhes/[id]" 
+          options={{ 
+            headerShown: false,
+            animation: 'slide_from_right' 
+          }} 
+        /> 
+      </Stack>
 <StatusBar style="auto" /> 
 </ThemeProvider> 
 

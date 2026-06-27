@@ -1,19 +1,24 @@
-import { Ionicons } from '@expo/vector-icons'; // Já vem instalado no Expo!
+import { Ionicons } from '@expo/vector-icons';
 import { Tabs } from 'expo-router';
+import React from 'react';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 export default function TabLayout() {
+  const insets = useSafeAreaInsets();
+  
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: '#1A237E', // O teu azul escuro para a tab ativa
-        tabBarInactiveTintColor: '#B0BEC5', // Cinzento para as inativas
-        headerShown: false, // Escondemos o header padrão porque o teu design já tem o "BOM DIA"
+        tabBarActiveTintColor: '#1A237E', 
+        tabBarInactiveTintColor: '#B0BEC5', 
+        headerShown: false, 
         tabBarStyle: {
           borderTopWidth: 0,
-          elevation: 10, // Sombra no Android
-          shadowOpacity: 0.1, // Sombra no iOS
-          height: 65, // Um pouco mais alta para ficar confortável
-          paddingBottom: 10,
+          elevation: 10, 
+          shadowOpacity: 0.1, 
+          height: 65 + Math.max(insets.bottom, 0),
+          paddingBottom: Math.max(insets.bottom, 10), 
+          paddingTop: 10
         },
         tabBarLabelStyle: {
           fontWeight: '600',
@@ -21,7 +26,6 @@ export default function TabLayout() {
         }
       }}
     >
-      {/* 1. TAB: CATÁLOGO (ficheiro index.tsx) */}
       <Tabs.Screen
         name="catalogo"
         options={{
@@ -32,7 +36,6 @@ export default function TabLayout() {
         }}
       />
 
-      {/* 2. TAB: RESERVAS (ficheiro reservas.tsx) */}
       <Tabs.Screen
         name="reservas"
         options={{
@@ -42,8 +45,8 @@ export default function TabLayout() {
           ),
         }}
       />
+      
 
-      {/* 3. TAB: PERFIL (ficheiro perfil.tsx) */}
       <Tabs.Screen
         name="perfil"
         options={{

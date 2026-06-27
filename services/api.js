@@ -1,23 +1,27 @@
 import axios from 'axios';
 import * as SecureStore from "expo-secure-store";
 
+const API_URL = 'http://IP:8000';
+
+
 const api = axios.create({
-  baseURL: 'http://192.168.1.144:8000/api',
-  //192.168.1.144 
-  //10.232.157.217
+  baseURL:`${API_URL}/api`,
+  
+ 
 });
 
 api.interceptors.request.use(async (config) => {
-  const token = await SecureStore.getItemAsync("authToken"); // Pega o token seguro
+  const token = await SecureStore.getItemAsync("authToken"); 
   if (token) {
-    config.headers.Authorization = `Bearer ${token}`; // Adiciona o token no header
+    config.headers.Authorization = `Bearer ${token}`; 
   }
   return config;
 }, (error) => {
-  // Captura erro antes de enviar a requisição
+  
   return Promise.reject(error);
 });
 
+export { API_URL };
 export default api;
 
 

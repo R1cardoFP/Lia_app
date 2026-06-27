@@ -4,14 +4,23 @@ import { router, useFocusEffect } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import { Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { API_URL } from '../../../services/api';
 
 
+interface OpcaoMenuProps {
+  icone: any;
+  titulo: string;
+  corIcone?: string;
+  corTexto?: string;
+  fundoIcone?: string;
+  onPress: () => void;
+}
 
 export default function Perfil() {
   const { user, logout, refreshUser } = useAuth();
   const [userData, setUserData] = useState({ name: 'Carregando...', email: '', role: 'Estudante' });
   const [userInitials, setUserInitials] = useState('');
-  const [imageUri, setImageUri] = useState(null);
+  const [imageUri, setImageUri] = useState<string | null>(null);
 
 
 
@@ -26,7 +35,14 @@ export default function Perfil() {
 
   const processarDadosUtilizador = () => {
     if (!user) return;
-    const TIPOS = { 1: 'Gestor', 2: 'Técnico', 3: 'Orientador', 4: 'Requisitante', 5: 'Bolseiro', 6: 'Visitante' };
+    const TIPOS: Record<number, string> = { 
+      1: 'Gestor', 
+      2: 'Técnico', 
+      3: 'Orientador', 
+      4: 'Requisitante', 
+      5: 'Bolseiro', 
+      6: 'Visitante' 
+    };
 
     setUserData({
       name: user.name || 'Utilizador LIA',
@@ -41,9 +57,9 @@ export default function Perfil() {
     );
 
     if (user.image) {
-      const baseURL = 'http://192.168.1.81:8000'; // Mantém o teu IP local para as imagens
+       
       const caminhoImagem = user.image.startsWith('/') ? user.image.substring(1) : user.image;
-      setImageUri(`${baseURL}/${caminhoImagem}`);
+      setImageUri(`${API_URL}/${caminhoImagem}`);
     } else {
       setImageUri(null);
     }
@@ -67,7 +83,7 @@ export default function Perfil() {
     );
   };
 
-  const OpcaoMenu = ({ icone, titulo, corIcone = '#546E7A', corTexto = '#212121', fundoIcone = '#F5F5F5', onPress }) => (
+  const OpcaoMenu = ({ icone, titulo, corIcone = '#546E7A', corTexto = '#212121', fundoIcone = '#F5F5F5', onPress }: OpcaoMenuProps) => (
     <TouchableOpacity style={styles.menuItem} onPress={onPress}>
       <View style={[styles.iconContainer, { backgroundColor: fundoIcone }]}>
         <Ionicons name={icone} size={20} color={corIcone} />

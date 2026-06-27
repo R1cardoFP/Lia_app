@@ -3,7 +3,27 @@ import { router } from 'expo-router'; // <-- Adicionado useFocusEffect
 import React, { useEffect, useState } from 'react'; // <-- Adicionado useCallback
 import { ActivityIndicator, FlatList, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'; // <-- Adicionado Image e removido SafeAreaView daqui
 import { SafeAreaView } from 'react-native-safe-area-context'; // <-- Adicionado para eliminar o Warning do SafeAreaView
-import api from '../../../services/api';
+import api, { API_URL } from '../../../services/api';
+
+
+interface Categoria {
+  id: string | number;
+  description: string;
+}
+
+interface Kit {
+  id: number;
+  name: string;
+  description: string;
+  kit_unities_count: number;
+}
+
+interface Equipamento {
+  id: number;
+  nome: string;
+  model: string;
+  item_unities_count: number;
+}
 
 export default function Catalogo() {
 
@@ -15,16 +35,16 @@ const userInitials = partesNome.length > 1
   ? (partesNome[0][0] + partesNome[partesNome.length - 1][0]).toUpperCase()
   : userName.substring(0, 2).toUpperCase();
 
-const baseURL = 'http://:8000'; 
+ 
 const imageUri = user?.image 
-  ? `${baseURL}/${user.image.startsWith('/') ? user.image.substring(1) : user.image}`
+  ? `${API_URL}/${user.image.startsWith('/') ? user.image.substring(1) : user.image}`
   : null;
   
-  const [categoriasDB, setCategoriasDB] = useState([{ id: 'Todos', description: 'Todos' }]);
-  const [categoriaAtiva, setCategoriaAtiva] = useState('Todos');
+  const [categoriasDB, setCategoriasDB] = useState<Categoria[]>([{ id: 'Todos', description: 'Todos' }]);
+  const [categoriaAtiva, setCategoriaAtiva] = useState<string | number>('Todos');
   
-  const [destaquesKits, setDestaquesKits] = useState([]);
-  const [equipamentosItens, setEquipamentosItens] = useState([]);
+  const [destaquesKits, setDestaquesKits] = useState<Kit[]>([]);
+  const [equipamentosItens, setEquipamentosItens] = useState<Equipamento[]>([]);
   
   const [loadingInitial, setLoadingInitial] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -38,7 +58,8 @@ const imageUri = user?.image
   }, []);
 
 
-  const carregarCatalogo = async (numeroPagina, catId = categoriaAtiva) => {
+  
+    const carregarCatalogo = async (numeroPagina: number, catId: string | number = categoriaAtiva) => {
     if (loadingMore) return;
     if (numeroPagina > 1 && !temMaisPaginas) return;
 
@@ -80,7 +101,8 @@ const imageUri = user?.image
     }
   };
 
-  const mudarCategoria = (idCategoria) => {
+  
+  const mudarCategoria = (idCategoria: string | number) => {
     setCategoriaAtiva(idCategoria);
     setTemMaisPaginas(true);
     setEquipamentosItens([]); 
@@ -93,7 +115,7 @@ const imageUri = user?.image
     }
   };
 
-  const BadgeDisponibilidade = ({ quantidade }) => {
+  const BadgeDisponibilidade = ({ quantidade }: { quantidade: number }) => {
     if (quantidade === 0) {
       return (
         <View style={[styles.badge, { backgroundColor: '#F0F0F0' }]}>
@@ -191,23 +213,27 @@ const imageUri = user?.image
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={renderHeader}
         renderItem={({ item }) => (
-          <View style={styles.cardLista}>
-            <View style={styles.imagemListaMock} />
-            <View style={styles.listaTextoInfo}>
-              <Text style={styles.cardTitulo} numberOfLines={1}>{item.nome}</Text>
-              <Text style={styles.cardSubtitulo} numberOfLines={1}>{item.model}</Text>
+          <TouchableOpacity activeOpacity={0.8} onPress={() => router.push(`/detalhes/${item.id}`)}>
+            <View style={styles.cardLista}>
+              <View style={styles.imagemListaMock} />
+              <View style={styles.listaTextoInfo}>
+                <Text style={styles.cardTitulo} numberOfLines={1}>{item.nome}</Text>
+                <Text style={styles.cardSubtitulo} numberOfLines={1}>{item.model}</Text>
+              </View>
+              <BadgeDisponibilidade quantidade={item.item_unities_count} />
             </View>
-            <BadgeDisponibilidade quantidade={item.item_unities_count} />
-          </View>
+          </TouchableOpacity>
         )}
         onEndReached={aoChegarAoFimDaLista}
         onEndReachedThreshold={0.1} 
         ListFooterComponent={renderFooter}
-        ListEmptyComponent={!loadingInitial && (
+        ListEmptyComponent={
+        !loadingInitial ? (
           <Text style={{ textAlign: 'center', color: '#9E9E9E', marginTop: 20 }}>
             Nenhum equipamento encontrado nesta categoria.
           </Text>
-        )}
+        ) : null // <-- Se estiver a carregar, passa null em vez de false
+      }
       />
     </SafeAreaView>
   );

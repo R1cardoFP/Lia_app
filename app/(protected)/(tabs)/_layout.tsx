@@ -37,6 +37,16 @@ export default function TabLayout() {
       />
 
       <Tabs.Screen
+        name="fazer-reserva"
+        options={{
+          title: 'Reservar',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="calendar-outline" size={size} color={color} />
+          ),
+        }}
+      />
+
+      <Tabs.Screen
         name="reservas"
         options={{
           title: 'Reservas',

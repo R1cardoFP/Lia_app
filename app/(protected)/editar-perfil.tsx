@@ -1,13 +1,21 @@
+import { useAuth } from "@/hooks/useAuth";
 import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
 import { router, Stack, useFocusEffect } from 'expo-router';
 import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, KeyboardTypeOptions, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import api from '../services/api';
+import api, { API_URL } from '../../services/api';
 
-// 1. CARGOS ATUALIZADOS DA TUA BASE DE DADOS
+
+interface InputGroupProps {
+  label: string;
+  value: string;
+  onChangeText: (text: string) => void;
+  keyboardType?: KeyboardTypeOptions;
+  editable?: boolean;
+}
+
 const TIPOS_UTILIZADOR = [
   { id: 1, label: 'Gestor' },
   { id: 2, label: 'Técnico' },
@@ -17,7 +25,7 @@ const TIPOS_UTILIZADOR = [
   { id: 6, label: 'Visitante' },
 ];
 
-const InputGroup = ({ label, value, onChangeText, keyboardType = 'default', editable = true }) => (
+const InputGroup = ({ label, value, onChangeText, keyboardType = 'default', editable = true }: InputGroupProps) => (
   <View style={styles.inputContainer}>
     <Text style={styles.label}>{label}</Text>
     <TextInput style={[styles.input, !editable && styles.inputDisabled]} value={value} onChangeText={onChangeText} keyboardType={keyboardType} editable={editable} placeholderTextColor="#9E9E9E" />
@@ -25,11 +33,12 @@ const InputGroup = ({ label, value, onChangeText, keyboardType = 'default', edit
 );
 
 export default function EditarPerfil() {
+  const { user, refreshUser } = useAuth();
   const [nome, setNome] = useState('');
   const [telemovel, setTelemovel] = useState('');
   const [curso, setCurso] = useState('');
   const [numero, setNumero] = useState('');
-  const [imageUri, setImageUri] = useState(null); 
+  const [imageUri, setImageUri] = useState<string | null>(null);
   const [tipoSelecionado, setTipoSelecionado] = useState(TIPOS_UTILIZADOR[3]); // Default: Requisitante
   const [loading, setLoading] = useState(true);
   const [guardando, setGuardando] = useState(false);
@@ -37,14 +46,14 @@ export default function EditarPerfil() {
   const [modalVisivel, setModalVisivel] = useState(false);
 
   useFocusEffect(
-    useCallback(() => { carregarDados(); }, [])
-  );
+  useCallback(() => { carregarDados(); }, [user]) // <-- Adicionado o user aqui
+);
 
-  const carregarDados = async () => {
+  
+    const carregarDados = () => {
+    if (!user) return;
     try {
-      const token = await AsyncStorage.getItem('userToken');
-      const response = await api.get('/me', { headers: { Authorization: `Bearer ${token}` } });
-      const user = response.data;
+     
       
       setNome(user.name || '');
       setTelemovel(user.phone?.toString() || ''); 
@@ -63,10 +72,9 @@ export default function EditarPerfil() {
       }
 
       if (user.image) {
-        // IP A FUNCIONAR
-        const baseURL = 'http://192.168.1.81:8000'; 
+       
         const caminhoImagem = user.image.startsWith('/') ? user.image.substring(1) : user.image;
-        setImageUri(`${baseURL}/${caminhoImagem}`);
+        setImageUri(`${API_URL}/${caminhoImagem}`);
       }
     } catch (error) {
       console.log('Erro ao carregar perfil:', error);
@@ -96,7 +104,7 @@ export default function EditarPerfil() {
   const guardarAlteracoes = async () => {
     setGuardando(true);
     try {
-      const token = await AsyncStorage.getItem('userToken');
+      
       const formData = new FormData();
       formData.append('name', nome);
       formData.append('phone', telemovel);
@@ -113,14 +121,14 @@ export default function EditarPerfil() {
       }
 
       const response = await api.post('/perfil/edit', formData, {
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data' }
-      });
+      headers: { 'Content-Type': 'multipart/form-data' } // <-- Só ficou o Content-Type
+    });
 
       if (response.data.status === 'success') {
-        await AsyncStorage.setItem('userName', nome);
+        await refreshUser();
         Alert.alert('Sucesso', 'Perfil atualizado!', [{ text: 'OK', onPress: () => router.back() }]);
       }
-    } catch (error) {
+    } catch (error: any) {
       Alert.alert('Erro do Servidor', error.response?.data?.message || 'Erro desconhecido.');
     } finally {
       setGuardando(false);

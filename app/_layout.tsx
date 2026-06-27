@@ -4,15 +4,17 @@ import { StatusBar } from 'expo-status-bar';
 import 'react-native-reanimated';
  
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { AuthProvider } from '../contexts/authContext';
  
 export const unstable_settings = { 
-  anchor: '(tabs)', 
+  anchor: 'login', 
 }; 
  
 export default function RootLayout() { 
   const colorScheme = useColorScheme(); 
  
   return ( 
+    <AuthProvider>
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}> 
       <Stack> 
         <Stack.Screen name="login"   options={{  
@@ -36,11 +38,10 @@ export default function RootLayout() {
             headerTintColor: '#fff',         
           }} 
         /> 
-        
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} /> 
-        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} /> 
+        <Stack.Screen name="(protected)" options={{ headerShown: false }} /> 
       </Stack> 
 <StatusBar style="auto" /> 
 </ThemeProvider> 
+</AuthProvider>
 ); 
 }

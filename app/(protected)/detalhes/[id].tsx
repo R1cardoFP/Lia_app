@@ -1,11 +1,25 @@
+import { useAuth } from "@/hooks/useAuth";
 import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Calendar, LocaleConfig } from 'react-native-calendars';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import api from '../../services/api';
+import api, { API_URL } from '../../../services/api';
+
+
+interface DetalhesItem {
+  id: number;
+  nome: string;
+  model: string;
+  image?: string;
+  quantidade: number;
+  categoria: string;
+  observacao?: string;
+  acessorios?: string;
+  preco: string | number;
+}
+
 
 LocaleConfig.locales['pt'] = {
   monthNames: ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'],
@@ -22,8 +36,11 @@ export default function DetalhesEquipamento() {
   
   // Esta função deteta o tamanho da barra de navegação do telemóvel!
   const insets = useSafeAreaInsets(); 
+
+  const { logout } = useAuth();
   
-  const [item, setItem] = useState(null);
+
+  const [item, setItem] = useState<DetalhesItem | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -32,10 +49,9 @@ export default function DetalhesEquipamento() {
 
   const carregarDetalhes = async () => {
     try {
-      const token = await AsyncStorage.getItem('userToken');
-      const response = await api.get(`/item/${id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+
+
+      const response = await api.get(`/item/${id}`);
 
       if (response.data.status === 'success') {
         setItem(response.data.data);
@@ -80,7 +96,7 @@ export default function DetalhesEquipamento() {
           </TouchableOpacity>
           
           {item.image ? (
-            <Image source={{ uri: `http://192.168.1.81:8000/${item.image}` }} style={styles.coverImage} />
+            <Image source={{ uri: `${API_URL}/${item.image}` }} style={styles.coverImage} />
           ) : (
             <View style={[styles.coverImage, { backgroundColor: '#E0E0E0', justifyContent: 'center', alignItems: 'center' }]}>
               <Ionicons name="camera-outline" size={60} color="#9E9E9E" />

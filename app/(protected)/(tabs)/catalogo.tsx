@@ -1,88 +1,70 @@
-import { Ionicons } from '@expo/vector-icons'; // <-- ADICIONADO PARA OS ÍCONES
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { router, useFocusEffect } from 'expo-router';
-import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, FlatList, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import api from '../../services/api';
+import { useAuth } from "@/hooks/useAuth";
+import { router } from 'expo-router'; // <-- Adicionado useFocusEffect
+import React, { useEffect, useState } from 'react'; // <-- Adicionado useCallback
+import { ActivityIndicator, FlatList, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'; // <-- Adicionado Image e removido SafeAreaView daqui
+import { SafeAreaView } from 'react-native-safe-area-context'; // <-- Adicionado para eliminar o Warning do SafeAreaView
+import api, { API_URL } from '../../../services/api';
+
+
+interface Categoria {
+  id: string | number;
+  description: string;
+}
+
+interface Kit {
+  id: number;
+  name: string;
+  description: string;
+  kit_unities_count: number;
+}
+
+interface Equipamento {
+  id: number;
+  nome: string;
+  model: string;
+  item_unities_count: number;
+}
 
 export default function Catalogo() {
-  const [categoriasDB, setCategoriasDB] = useState([{ id: 'Todos', description: 'Todos' }]);
-  const [categoriaAtiva, setCategoriaAtiva] = useState('Todos');
+
+  const { user, logout } = useAuth();
+
+const userName = user?.name || 'Utilizador';
+const partesNome = user?.name?.trim().split(' ') || [];
+const userInitials = partesNome.length > 1 
+  ? (partesNome[0][0] + partesNome[partesNome.length - 1][0]).toUpperCase()
+  : userName.substring(0, 2).toUpperCase();
+
+ 
+const imageUri = user?.image 
+  ? `${API_URL}/${user.image.startsWith('/') ? user.image.substring(1) : user.image}`
+  : null;
   
-  const [destaquesKits, setDestaquesKits] = useState([]);
-  const [equipamentosItens, setEquipamentosItens] = useState([]);
+  const [categoriasDB, setCategoriasDB] = useState<Categoria[]>([{ id: 'Todos', description: 'Todos' }]);
+  const [categoriaAtiva, setCategoriaAtiva] = useState<string | number>('Todos');
+  
+  const [destaquesKits, setDestaquesKits] = useState<Kit[]>([]);
+  const [equipamentosItens, setEquipamentosItens] = useState<Equipamento[]>([]);
   
   const [loadingInitial, setLoadingInitial] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [paginaAtual, setPaginaAtual] = useState(1);
   const [temMaisPaginas, setTemMaisPaginas] = useState(true);
 
-  const [userName, setUserName] = useState('Carregando...');
-  const [userInitials, setUserInitials] = useState('');
-  const [imageUri, setImageUri] = useState(null);
 
   useEffect(() => {
     carregarCatalogo(1, 'Todos');
   }, []);
-
-  useFocusEffect(
-    useCallback(() => {
-      carregarDadosUtilizador();
-    }, [])
-  );
-
-  const carregarDadosUtilizador = async () => {
-    try {
-      const token = await AsyncStorage.getItem('userToken');
-      const response = await api.get('/me', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
-      const user = response.data;
-
-      if (user.name) {
-        setUserName(user.name);
-        const partesNome = user.name.trim().split(' ');
-        if (partesNome.length > 1) {
-          setUserInitials((partesNome[0][0] + partesNome[partesNome.length - 1][0]).toUpperCase());
-        } else {
-          setUserInitials(user.name.substring(0, 2).toUpperCase());
-        }
-      }
-
-      if (user.image) {
-        const urlFinal = obterUrlImagem(user.image);
-        setImageUri(urlFinal);
-      } else {
-        setImageUri(null);
-      }
-    } catch (error) {
-      console.log('Erro ao carregar dados do utilizador no catálogo:', error);
-    }
-  };
-
-  // --- FUNÇÃO AUXILIAR PARA CRIAR O LINK DA IMAGEM ---
-  const obterUrlImagem = (caminho) => {
-    if (!caminho) return null;
-    const baseURL = 'http://192.168.1.81:8000';
-    const caminhoLimpo = caminho.startsWith('/') ? caminho.substring(1) : caminho;
-    return `${baseURL}/${caminhoLimpo}`;
-  };
-
-  const carregarCatalogo = async (numeroPagina, catId = categoriaAtiva) => {
+  
+    const carregarCatalogo = async (numeroPagina: number, catId: string | number = categoriaAtiva) => {
     if (loadingMore) return;
     if (numeroPagina > 1 && !temMaisPaginas) return;
 
     try {
       if (numeroPagina === 1) setLoadingInitial(true);
       else setLoadingMore(true);
-
-      const token = await AsyncStorage.getItem('userToken');
       
-      const response = await api.get(`/catalogo?page=${numeroPagina}&categoria_id=${catId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await api.get(`/catalogo?page=${numeroPagina}&categoria_id=${catId}`);
 
       if (response.data.status === 'success') {
         const novosDados = response.data.data;
@@ -105,15 +87,19 @@ export default function Catalogo() {
         setPaginaAtual(novosDados.paginacao.pagina_atual);
         setTemMaisPaginas(novosDados.paginacao.tem_mais);
       }
-    } catch (error) {
-      console.log('Erro ao carregar catálogo:', error);
-    } finally {
+    } catch (error: any) {
+  console.log('Erro ao carregar catálogo:', error);
+  if (error.response?.status === 401) {
+    logout(); // Se o token expirou, manda para o login e para o loop
+  }
+} finally {
       setLoadingInitial(false);
       setLoadingMore(false);
     }
   };
 
-  const mudarCategoria = (idCategoria) => {
+  
+  const mudarCategoria = (idCategoria: string | number) => {
     setCategoriaAtiva(idCategoria);
     setTemMaisPaginas(true);
     setEquipamentosItens([]); 
@@ -126,7 +112,7 @@ export default function Catalogo() {
     }
   };
 
-  const BadgeDisponibilidade = ({ quantidade }) => {
+  const BadgeDisponibilidade = ({ quantidade }: { quantidade: number }) => {
     if (quantidade === 0) {
       return (
         <View style={[styles.badge, { backgroundColor: '#F0F0F0' }]}>
@@ -257,11 +243,13 @@ export default function Catalogo() {
         onEndReached={aoChegarAoFimDaLista}
         onEndReachedThreshold={0.1} 
         ListFooterComponent={renderFooter}
-        ListEmptyComponent={!loadingInitial && (
+        ListEmptyComponent={
+        !loadingInitial ? (
           <Text style={{ textAlign: 'center', color: '#9E9E9E', marginTop: 20 }}>
             Nenhum equipamento encontrado nesta categoria.
           </Text>
-        )}
+        ) : null // <-- Se estiver a carregar, passa null em vez de false
+      }
       />
     </SafeAreaView>
   );

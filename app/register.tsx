@@ -1,12 +1,13 @@
+import { useAuth } from "@/hooks/useAuth";
 import { Feather, Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import api from '../services/api';
  
 export default function Register() { 
   const router = useRouter(); 
+  const { register } = useAuth();
  
   const [name, setName] = useState(''); 
   const [studentNumber, setStudentNumber] = useState(''); 
@@ -66,18 +67,16 @@ export default function Register() {
     }
 
     try { 
-    const response = await api.post('/register', {  
-        name: nameTrimmed,  
-        email: emailTrimmed,  
+    await register({
+        name: nameTrimmed,
+        email: emailTrimmed,
         password: password,
         phone: phoneTrimmed,
-        student_number: studentTrimmed ? studentTrimmed : null
+        student_number: studentTrimmed ? studentTrimmed : undefined
       }); 
       
       setIsError(false);
-      setResultado('Conta criada com sucesso! Efetua o login.'); 
-       
-      setTimeout(() => router.replace('/login'), 1500); 
+      setResultado('Conta criada com sucesso! A entrar...'); 
        
     } catch (error: any) { 
       setIsError(true);

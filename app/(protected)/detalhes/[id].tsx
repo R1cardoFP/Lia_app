@@ -39,7 +39,14 @@ export default function DetalhesEquipamento() {
   const carregarDetalhes = async () => {
     try {
       const token = await AsyncStorage.getItem('userToken');
-      const response = await api.get(`/item/${id}`, {
+      
+      let endpoint = `/item/${id}`;
+
+      if (temReservaAtiva) {
+        endpoint += `?start_date=${reserva.dataInicio}&end_date=${reserva.dataFim}`;
+      }
+
+      const response = await api.get(endpoint, {
         headers: { Authorization: `Bearer ${token}` }
       });
 

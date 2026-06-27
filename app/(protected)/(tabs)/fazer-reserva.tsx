@@ -98,20 +98,35 @@ export default function FazerReserva() {
 
     try {
       const token = await AsyncStorage.getItem('userToken');
+      
+      // 1. Separar os itens e os kits em dois arrays distintos como o teu Laravel pede
+      const itensPuros = reserva.itens
+        .filter((i: any) => !i.is_kit)
+        .map((i: any) => ({ id: i.id, quantity: i.quantidadeSelecionada }));
+        
+      const kitsPuros = reserva.itens
+        .filter((i: any) => i.is_kit)
+        .map((i: any) => ({ id: i.id, quantity: i.quantidadeSelecionada }));
+
+      // 2. Calcular o ciclica_id com base na matemática fantástica do teu backend
+      // Se não for cíclica, ID é 1. Se for, é o ID do dia da semana (0 a 6) + 2.
+      let ciclicaFormatada = 1;
+      if (reserva.isCiclica && reserva.diaCiclico !== null) {
+        ciclicaFormatada = reserva.diaCiclico + 2;
+      }
+
+      // 3. Montar o pacote final com os nomes exatos do teu Request de validação
       const dadosParaEnviar = {
+        description: reserva.motivo,
         start_date: reserva.dataInicio,
         end_date: reserva.dataFim,
-        justification: reserva.motivo,
         cost_center_id: reserva.centroCusto,
-        is_cyclic: reserva.isCiclica ? 1 : 0,
-        cyclic_day: reserva.diaCiclico,
-        items: reserva.itens.map(i => ({
-          id: i.id,
-          is_kit: i.is_kit,
-          quantity: i.quantidadeSelecionada
-        }))
+        ciclica_id: ciclicaFormatada,
+        items: itensPuros,
+        kits: kitsPuros
       };
 
+      // ATENÇÃO: Confirma se o URL aqui bate certo com o teu api.php
       const response = await api.post('/reservas/criar', dadosParaEnviar, {
         headers: { Authorization: `Bearer ${token}` }
       });
@@ -121,8 +136,10 @@ export default function FazerReserva() {
           { text: 'OK', onPress: () => { limparReserva(); router.push('/reservas'); } }
         ]);
       }
-    } catch (error) {
-      Alert.alert('Erro ao Reservar', 'Ocorreu um problema ao submeter a reserva no servidor.');
+    } catch (error: any) {
+      // Se o Laravel devolver um erro de validação (ex: falta de stock ou user_type_id == 6)
+      const mensagemErro = error.response?.data?.message || 'Ocorreu um problema ao submeter a reserva no servidor.';
+      Alert.alert('Erro ao Reservar', mensagemErro);
     }
   };
 

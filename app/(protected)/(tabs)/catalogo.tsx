@@ -178,7 +178,7 @@ const imageUri = user?.image
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.destaquesContainer}>
             {destaquesKits.map((kit) => (
               <View key={kit.id} style={styles.cardDestaque}>
-                <View style={styles.imagemDestaqueMock} />
+                <View />
                 <Text style={styles.cardTitulo} numberOfLines={1}>{kit.name}</Text>
                 <Text style={styles.cardSubtitulo} numberOfLines={1}>{kit.description}</Text>
                 <BadgeDisponibilidade quantidade={kit.kit_unities_count} />

@@ -1,7 +1,8 @@
 import api from "@/services/api";
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, RefreshControl, ScrollView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 type Reserva = {
   id: number;
@@ -122,19 +123,15 @@ export default function Reservas() {
   }
 
   return (
-    <ScrollView 
-      style={styles.container} 
-      showsVerticalScrollIndicator={false}
-      refreshControl={
-        <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#065294']} />
-      }
-    >
-      {/* Header */}
+    <SafeAreaView style={styles.safeArea}>
+      <StatusBar backgroundColor="#ffffff" barStyle="dark-content" />
+
+      {/* Header Fixo fora do Scroll para colar no topo */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Reservas</Text>
         <Text style={styles.headerSubtitle}>Histórico de requisições</Text>
         
-        {/* Filtros / Chips com "Recusadas" */}
+        {/* Filtros / Chips */}
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsContainer}>
           {['Todas', 'Ativas', 'Concluídas', 'Recusadas'].map((item) => (
             <TouchableOpacity 
@@ -148,75 +145,101 @@ export default function Reservas() {
         </ScrollView>
       </View>
 
-      {/* Cards de Estatísticas Reais */}
-      <View style={styles.statsContainer}>
-        <View style={[styles.statCard, styles.bgTotal]}>
-          <Text style={styles.statNumber}>{totalReservas}</Text>
-          <Text style={styles.statLabel}>Total de reservas</Text>
-        </View>
-        <View style={[styles.statCard, styles.bgAtivas]}>
-          <Text style={styles.statNumber}>{ativasAgora}</Text>
-          <Text style={styles.statLabel}>Ativas agora</Text>
-        </View>
-      </View>
-
-      {/* Lista de Requisições */}
-      <View style={styles.listaContainer}>
-        <Text style={styles.listaTitle}>TODAS AS REQUISIÇÕES</Text>
-        
-        {reservasFiltradas.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>Nenhuma reserva encontrada para este filtro.</Text>
+      {/* Conteúdo em Scroll com o fundo azul correto */}
+      <View style={styles.corpoConteudo}>
+        <ScrollView 
+          style={{ flex: 1 }}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#065294']} />
+          }
+        >
+          {/* Cards de Estatísticas Reais */}
+          <View style={styles.statsContainer}>
+            <View style={[styles.statCard, styles.bgTotal]}>
+              <Text style={styles.statNumber}>{totalReservas}</Text>
+              <Text style={styles.statLabel}>Total de reservas</Text>
+            </View>
+            <View style={[styles.statCard, styles.bgAtivas]}>
+              <Text style={styles.statNumber}>{ativasAgora}</Text>
+              <Text style={styles.statLabel}>Ativas agora</Text>
+            </View>
           </View>
-        ) : (
-          reservasFiltradas.map((r) => {
-            const uiStatus = getStatusStyles(r.reserve_state_id);
-            const { dia, mes } = formatarDataLateral(r.start_date);
-            const periodoTexto = formatarPeriodoTexto(r.start_date, r.end_date);
 
-            return (
-              <TouchableOpacity 
-                  key={r.id} 
-                  style={styles.itemCard}
-                  onPress={() => router.push(`/(protected)/verReserva/${r.id}`)}
-                >
-                {/* Bloco de Data Dinâmico */}
-                <View style={styles.dateBlock}>
-                  <Text style={styles.dateMonth}>{mes}</Text>
-                  <Text style={styles.dateDay}>{dia}</Text>
-                </View>
+          {/* Lista de Requisições */}
+          <View style={styles.listaContainer}>
+            <Text style={styles.listaTitle}>TODAS AS REQUISIÇÕES</Text>
+            
+            {reservasFiltradas.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <Text style={styles.emptyText}>Nenhuma reserva encontrada para este filtro.</Text>
+              </View>
+            ) : (
+              reservasFiltradas.map((r) => {
+                const uiStatus = getStatusStyles(r.reserve_state_id);
+                const { dia, mes } = formatarDataLateral(r.start_date);
+                const periodoTexto = formatarPeriodoTexto(r.start_date, r.end_date);
 
-                {/* Divisor vertical */}
-                <View style={styles.divider} />
+                return (
+                  <TouchableOpacity 
+                    key={r.id} 
+                    style={styles.itemCard}
+                    onPress={() => router.push(`/(protected)/verReserva/${r.id}`)}
+                  >
+                    {/* Bloco de Data Dinâmico */}
+                    <View style={styles.dateBlock}>
+                      <Text style={styles.dateMonth}>{mes}</Text>
+                      <Text style={styles.dateDay}>{dia}</Text>
+                    </View>
 
-                {/* Ícone customizado baseado no status */}
-                <View style={styles.iconContainer}>
+                    {/* Divisor vertical */}
+                    <View style={styles.divider} />
 
-                </View>
+                    {/* Informações da BD */}
+                    <View style={styles.infoContainer}>
+                      <Text style={styles.itemName} numberOfLines={1}>
+                        {r.item_name || "Equipamento/Kit"}
+                      </Text>
+                      <Text style={styles.itemDate}>{periodoTexto}</Text>
+                    </View>
 
-                {/* Informações da BD */}
-                <View style={styles.infoContainer}>
-                  <Text style={styles.itemName} numberOfLines={1}>
-                    {r.item_name || "Equipamento/Kit"}
-                  </Text>
-                  <Text style={styles.itemDate}>{periodoTexto}</Text>
-                </View>
-
-                {/* Badge de Status Dinâmico */}
-                <View style={[styles.badge, { backgroundColor: uiStatus.sc }]}>
-                  <Text style={[styles.badgeText, { color: uiStatus.tc }]}>{uiStatus.texto}</Text>
-                </View>
-                
-              </TouchableOpacity>
-            );
-          })
-        )}
+                    {/* Badge de Status Dinâmico */}
+                    <View style={[styles.badge, { backgroundColor: uiStatus.sc }]}>
+                      <Text style={[styles.badgeText, { color: uiStatus.tc }]}>{uiStatus.texto}</Text>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })
+            )}
+          </View>
+        </ScrollView>
       </View>
-    </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: { 
+    flex: 1, 
+    backgroundColor: '#ffffff' // Força o topo da barra de estado a ser branco
+  },
+  header: { 
+    backgroundColor: '#fff', 
+    paddingHorizontal: 20, // Alinhamento lateral perfeito de 20px
+    paddingTop: 20, 
+    paddingBottom: 20 
+  },
+  corpoConteudo: {
+    flex: 1,
+    backgroundColor: '#f4f7fc' // Todo o resto do ecrã assume o azul claro
+  },
+  statsContainer: { 
+    flexDirection: 'row', 
+    gap: 10, 
+    paddingHorizontal: 20, // Alinhado com os 20px do header
+    paddingTop: 25,        // Espaço controlado idêntico ao do formulário
+    paddingBottom: 14 
+  },
   container: { 
     flex: 1, 
     backgroundColor: '#f4f7fc' 
@@ -333,16 +356,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#eaf0f8', 
     alignSelf: 'stretch', 
     marginHorizontal: 4 
-  },
-  iconContainer: { 
-    width: 36, 
-    height: 36, 
-    borderRadius: 10, 
-    backgroundColor: '#f0f5fa', 
-    alignItems: 'center', 
-    justifyContent: 'center', 
-    marginLeft: 6, 
-    marginRight: 10 
   },
   iconEmoji: { 
     fontSize: 16 

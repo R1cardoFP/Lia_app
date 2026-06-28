@@ -182,94 +182,104 @@ export default function Catalogo() {
         
         ListHeaderComponent={
           <View style={{ paddingBottom: 15 }}>
-            <View style={styles.header}>
-              <View>
-                <Text style={styles.saudacao}>Olá</Text>
-                <Text style={styles.nomeUtilizador}>{userName}</Text> 
-              </View>
-              <TouchableOpacity 
-                style={styles.avatarContainer} 
-                onPress={() => router.push('/perfil')} 
-              >
-                {imageUri ? (
-                  <Image source={{ uri: imageUri }} style={styles.imageAvatar} />
-                ) : (
-                  <Text style={styles.avatarText}>{userInitials}</Text>
-                )}
-              </TouchableOpacity>
-            </View>
-
-            {/* BARRA DE PESQUISA TOTALMENTE ESTÁVEL */}
-            <View style={styles.pesquisaContainer}>
-              <Ionicons name="search-outline" size={20} color="#9E9E9E" style={styles.pesquisaIcone} />
-              <TextInput
-                style={styles.pesquisaInput}
-                placeholder="Pesquisar equipamento ou modelo..."
-                placeholderTextColor="#9E9E9E"
-                value={pesquisa}
-                onChangeText={(texto) => setPesquisa(texto)}
-                returnKeyType="search"
-              />
-              {pesquisa.length > 0 && (
-                <TouchableOpacity onPress={() => setPesquisa('')}>
-                  <Ionicons name="close-circle" size={18} color="#B0BEC5" />
-                </TouchableOpacity>
-              )}
-            </View>
-
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoriasContainer}>
-              {categoriasDB.map((cat) => (
+            
+            {/* CONTAINER BRANCO DO HEADER COMPACTO */}
+            <View style={styles.headerBrancoContainer}>
+              <View style={styles.header}>
+                <View>
+                  <Text style={styles.saudacao}>Olá</Text>
+                  <Text style={styles.nomeUtilizador}>{userName}</Text> 
+                </View>
                 <TouchableOpacity 
-                  key={cat.id} 
-                  style={[styles.categoriaBtn, categoriaAtiva === cat.id && styles.categoriaBtnAtiva]}
-                  onPress={() => mudarCategoria(cat.id)}
+                  style={styles.avatarContainer} 
+                  onPress={() => router.push('/perfil')} 
                 >
-                  <Text style={[styles.categoriaText, categoriaAtiva === cat.id && styles.categoriaTextAtiva]}>
-                    {cat.description}
-                  </Text>
+                  {imageUri ? (
+                    <Image source={{ uri: imageUri }} style={styles.imageAvatar} />
+                  ) : (
+                    <Text style={styles.avatarText}>{userInitials}</Text>
+                  )}
                 </TouchableOpacity>
-              ))}
-            </ScrollView>
+              </View>
 
-            {/* Mostra um mini-loader discreto abaixo dos filtros se estiver a carregar a página 1 */}
+              {/* BARRA DE PESQUISA */}
+              <View style={styles.pesquisaContainer}>
+                <Ionicons name="search-outline" size={20} color="#9E9E9E" style={styles.pesquisaIcone} />
+                <TextInput
+                  style={styles.pesquisaInput}
+                  placeholder="Pesquisar equipamento ou modelo..."
+                  placeholderTextColor="#9E9E9E"
+                  value={pesquisa}
+                  onChangeText={(texto) => setPesquisa(texto)}
+                  returnKeyType="search"
+                />
+                {pesquisa.length > 0 && (
+                  <TouchableOpacity onPress={() => setPesquisa('')}>
+                    <Ionicons name="close-circle" size={18} color="#B0BEC5" />
+                  </TouchableOpacity>
+                )}
+              </View>
+              
+
+              {/* FILTROS / CHIPS */}
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsContainer}>
+                {categoriasDB.map((cat) => (
+                  <TouchableOpacity 
+                    key={cat.id} 
+                    style={[styles.chip, categoriaAtiva === cat.id && styles.chipActive]}
+                    onPress={() => mudarCategoria(cat.id)}
+                  >
+                    <Text style={[styles.chipText, categoriaAtiva === cat.id && styles.chipTextActive]}>
+                      {cat.description}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            </View>
+
+            {/* Mostra um mini-loader discreto abaixo do bloco branco se estiver a carregar */}
             {loadingInitial && (
               <ActivityIndicator size="small" color="#065294" style={{ marginVertical: 15 }} />
             )}
 
+            {/* DESTAQUES DOS KITS RECUPERADOS (Aparece fora do bloco branco no fundo azulado) */}
             {destaquesKits.length > 0 && pesquisa.length === 0 && (
               <>
                 <Text style={styles.sectionTitle}>EM DESTAQUE (KITS)</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.destaquesContainer} >
                   {destaquesKits.map((kit) => (
-                    <TouchableHighlight 
-                      key={kit.id} 
-                      underlayColor="#F5F5F5" 
-                      style={{ borderRadius: 16 }} 
-                      onPress={() => router.push(`/detalhes/${kit.id}`)}
-                    >
-                      <View style={styles.cardDestaque}>
-                        {kit.image ? (
-                          <Image source={{ uri: obterUrlImagem(kit.image) }} style={styles.imagemDestaqueMock} />
-                        ) : (
-                          <View style={[styles.imagemDestaqueMock, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#F5F5F5' }]}>
-                            <Ionicons name="camera-outline" size={30} color="#B0BEC5" />
-                          </View>
-                        )}
-                        <Text style={styles.cardTitulo} numberOfLines={1}>{kit.nome || kit.name}</Text>
-                        <Text style={styles.cardSubtitulo} numberOfLines={1}>{kit.description || kit.model}</Text>
-                        <BadgeDisponibilidade quantidade={kit.kit_unities_count || kit.item_unities_count || 0} />
-                      </View>
-                    </TouchableHighlight>
-                  ))}
+                  <TouchableHighlight 
+                    key={kit.id} 
+                    underlayColor="#F5F5F5" 
+                    style={{ borderRadius: 16, marginRight: 15 }} // MARGIN ADICIONADA AQUI para separar os touchables
+                    onPress={() => router.push(`/detalhes/${kit.id}`)}
+                  >
+                    {/* Remove o marginRight do cardDestaque interno para não dar conflito */}
+                    <View style={[styles.cardDestaque, { marginRight: 0 }]}>
+                      {kit.image ? (
+                        <Image source={{ uri: obterUrlImagem(kit.image) }} style={styles.imagemDestaqueMock} />
+                      ) : (
+                        <View style={[styles.imagemDestaqueMock, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#F5F5F5' }]}>
+                          <Ionicons name="camera-outline" size={30} color="#B0BEC5" />
+                        </View>
+                      )}
+                      <Text style={styles.cardTitulo} numberOfLines={1}>{kit.nome || kit.name}</Text>
+                      <Text style={styles.cardSubtitulo} numberOfLines={1}>{kit.description || kit.model}</Text>
+                      <BadgeDisponibilidade quantidade={kit.kit_unities_count || kit.item_unities_count || 0} />
+                    </View>
+                  </TouchableHighlight>
+                ))}
                 </ScrollView>
               </>
             )}
 
+            {/* TÍTULO DINÂMICO DA LISTA DE PRODUTOS */}
             <Text style={styles.sectionTitle}>
               {categoriaAtiva === 'Todos' ? 'TODOS OS EQUIPAMENTOS' : 
-              categoriaAtiva === 'Kits'  ? 'TODOS OS KITS' : String(categoriasDB.find(cat => cat.id === categoriaAtiva)?.description || 'EQUIPAMENTOS FILTRADOS').toUpperCase()}
+              categoriaAtiva === 'Kits'   ? 'TODOS OS KITS' : String(categoriasDB.find(cat => cat.id === categoriaAtiva)?.description || 'EQUIPAMENTOS FILTRADOS').toUpperCase()}
             </Text>
-          </View>
+
+          </View> 
         }
        
         renderItem={({ item }) => (
@@ -310,14 +320,73 @@ export default function Catalogo() {
   );
 }
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#f4f7fc' },
-  container: { paddingBottom: 100 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 10 },
+  
+  
+  safeArea: { flex: 1, backgroundColor: '#ffffff' },
+   container: { paddingBottom: 100, backgroundColor: '#f4f7fc' },
+  headerBrancoContainer: {
+    backgroundColor: '#ffffff',
+    paddingBottom: 16,
+    borderColor: '#e2e8f0',
+  },
+  header: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    paddingHorizontal: 20, 
+    paddingTop: 15 
+  },
+  pesquisaContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f4f7fc', // Um tom mais claro para destacar dentro do fundo branco
+    marginHorizontal: 20,
+    marginTop: 15,
+    paddingHorizontal: 15,
+    height: 48,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  pesquisaIcone: {
+    marginRight: 10,
+  },
+  pesquisaInput: {
+    flex: 1,
+    fontSize: 14,
+    color: '#212121',
+    height: '100%',
+  },
+  chipsContainer: { 
+    flexDirection: 'row', 
+    paddingHorizontal: 20, // Garante o alinhamento inicial na mesma posição
+    marginTop: 15, 
+  },
+ 
+  
   saudacao: { fontSize: 12, color: '#9E9E9E', fontWeight: 'bold' },
   nomeUtilizador: { fontSize: 20, fontWeight: 'bold', color: '#212121' },
   avatarContainer: { width: 45, height: 45, borderRadius: 22.5, backgroundColor: '#065294', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' }, 
   imageAvatar: { width: 45, height: 45, borderRadius: 22.5 }, 
   avatarText: { color: '#FFF', fontWeight: 'bold', fontSize: 16 },
+  chip: { 
+    paddingHorizontal: 14, 
+    paddingVertical: 6, 
+    borderRadius: 20, 
+    backgroundColor: '#f0f3f8', 
+    marginRight: 8 
+  },
+  chipActive: { 
+    backgroundColor: '#065294' 
+  },
+  chipText: { 
+    fontSize: 12, 
+    color: '#5a7a9a', 
+    fontWeight: '600' 
+  },
+  chipTextActive: { 
+    color: '#fff' 
+  },
   categoriasContainer: { paddingHorizontal: 20, marginTop: 20, marginBottom: 10 },
   categoriaBtn: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: '#ffffff', marginRight: 10, borderWidth: 1, borderColor: '#EEEEEE' },
   categoriaBtnAtiva: { backgroundColor: '#065294', borderColor: '#065294' },

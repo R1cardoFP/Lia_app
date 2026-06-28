@@ -250,12 +250,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center', 
     alignItems: 'center' 
   },
-  header: { 
-    backgroundColor: '#fff', 
-    paddingHorizontal: 16, 
-    paddingTop: 20, 
-    paddingBottom: 12 
-  },
+
   headerTitle: { 
     fontSize: 22, 
     fontWeight: '800', 
@@ -288,11 +283,7 @@ const styles = StyleSheet.create({
   chipTextActive: { 
     color: '#fff' 
   },
-  statsContainer: { 
-    flexDirection: 'row', 
-    gap: 10, 
-    padding: 14 
-  },
+  
   statCard: { 
     flex: 1, 
     borderRadius: 14, 
@@ -321,7 +312,7 @@ const styles = StyleSheet.create({
   listaTitle: { 
     fontSize: 11, 
     fontWeight: '700', 
-    color: '#3a5068', 
+    color: '#9E9E9E', 
     letterSpacing: 0.3, 
     marginBottom: 10 
   },

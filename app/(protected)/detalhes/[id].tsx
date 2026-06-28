@@ -6,15 +6,15 @@ import { ActivityIndicator, Alert, Image, ScrollView, StyleSheet, Text, Touchabl
 import { Calendar } from 'react-native-calendars';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useReserva } from '../../../contexts/reservaContext';
-import api from '../../../services/api';
+import api, { API_URL } from '../../../services/api';
 
 export default function DetalhesEquipamento() {
-  const { id } = useLocalSearchParams();
+  const { id, tipo } = useLocalSearchParams();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   
   // CONSUMIR O ESTADO GLOBAL DA RESERVA
-  const { adicionarItem, temReservaAtiva, reserva } = useReserva();
+  const { adicionarItem, temReservaAtiva, reserva } = useReserva() as any;
   
   const [item, setItem] = useState<any>(null);
   const [datasBloqueadas, setDatasBloqueadas] = useState<string[]>([]);
@@ -22,6 +22,7 @@ export default function DetalhesEquipamento() {
   
   // Estado local para controlar a quantidade que o utilizador quer levar
   const [quantidadeSelecionada, setQuantidadeSelecionada] = useState(1);
+
 
   useEffect(() => {
     carregarDetalhes();
@@ -40,11 +41,13 @@ export default function DetalhesEquipamento() {
   const carregarDetalhes = async () => {
     try {
       const token = await AsyncStorage.getItem('userToken');
-      
-      let endpoint = `/item/${id}`;
+
+      const tipoParam = tipo || 'item'; // fallback seguro
+
+      let endpoint = `/item/${id}?tipo=${tipoParam}`;
 
       if (temReservaAtiva) {
-        endpoint += `?start_date=${reserva.dataInicio}&end_date=${reserva.dataFim}`;
+        endpoint += `&start_date=${reserva.dataInicio}&end_date=${reserva.dataFim}`;
       }
 
       const response = await api.get(endpoint, {
@@ -55,9 +58,9 @@ export default function DetalhesEquipamento() {
         setItem(response.data.data);
       }
 
-      // NOVA PARTE: Chamar a rota das datas esgotadas
+      // Datas esgotadas
       try {
-        const datasResponse = await api.get(`/item/${id}/datas-esgotadas`, {
+        const datasResponse = await api.get(`/item/${id}/datas-esgotadas?tipo=${tipoParam}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         if (datasResponse.data.status === 'success') {
@@ -139,7 +142,7 @@ export default function DetalhesEquipamento() {
           </TouchableOpacity>
           
           {item.image ? (
-            <Image source={{ uri: `http://192.168.1.81:8000/${item.image}` }} style={styles.coverImage} />
+            <Image source={{ uri: `${API_URL}/${item.image}` }} style={styles.coverImage} />
           ) : (
             <View style={[styles.coverImage, { backgroundColor: '#E0E0E0', justifyContent: 'center', alignItems: 'center' }]}>
               <Ionicons name="camera-outline" size={60} color="#9E9E9E" />

@@ -201,7 +201,7 @@ export default function Catalogo() {
           <Text style={styles.sectionTitle}>EM DESTAQUE (KITS)</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.destaquesContainer}>
             {destaquesKits.map((kit) => (
-              <TouchableOpacity key={kit.id} activeOpacity={0.8} onPress={() => router.push(`/detalhes/${kit.id}`)}>
+              <TouchableOpacity key={kit.id} activeOpacity={0.8} onPress={() => router.push(`/detalhes/${kit.id}?tipo=kit`)}>
                 <View style={styles.cardDestaque}>
                   
                   {kit.image ? (
@@ -248,7 +248,7 @@ export default function Catalogo() {
         showsVerticalScrollIndicator={false}
         ListHeaderComponent={renderHeader}
         renderItem={({ item }) => (
-          <TouchableOpacity activeOpacity={0.8} onPress={() => router.push(`/detalhes/${item.id}`)}>
+          <TouchableOpacity activeOpacity={0.8} onPress={() => router.push(`/detalhes/${item.id}?tipo=${categoriaAtiva === 'Kits' ? 'kit' : 'item'}`)}>
             <View style={styles.cardLista}>
               
               {item.image ? (

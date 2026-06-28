@@ -4,7 +4,7 @@ import { router, useFocusEffect } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import { Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { API_URL } from '../../../services/api';
+import api, { API_URL } from '../../../services/api';
 
 
 interface OpcaoMenuProps {
@@ -21,13 +21,15 @@ export default function Perfil() {
   const [userData, setUserData] = useState({ name: 'Carregando...', email: '', role: 'Estudante' });
   const [userInitials, setUserInitials] = useState('');
   const [imageUri, setImageUri] = useState<string | null>(null);
+  const [stats, setStats] = useState({ reservas: 0, ativas: 0, itens_usados: 0 });
 
 
 
-  useFocusEffect(
+   useFocusEffect(
     useCallback(() => {
       if (user) {
         processarDadosUtilizador();
+        carregarEstatisticas();
       }
     }, [user])
   );
@@ -65,6 +67,16 @@ export default function Perfil() {
     }
   };
 
+   const carregarEstatisticas = async () => {
+    try {
+      const response = await api.get('/perfil/estatisticas');
+      if (response.data.status === 'success') {
+        setStats(response.data.data);
+      }
+    } catch (err) {
+      console.log('Erro ao carregar estatísticas:', err);
+    }
+  };
 
   const handleLogout = () => {
     Alert.alert(
@@ -118,24 +130,24 @@ export default function Perfil() {
         {/* --- CARTÃO DE ESTATÍSTICAS --- */}
         <View style={styles.statsCard}>
           <View style={styles.statItem}>
-            <Text style={styles.statNumberBlue}>12</Text>
+            <Text style={styles.statNumberBlue}>{stats.reservas}</Text>
             <Text style={styles.statLabel}>Reservas</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
-            <Text style={styles.statNumberGreen}>1</Text>
+            <Text style={styles.statNumberGreen}>{stats.ativas}</Text>
             <Text style={styles.statLabel}>Ativas</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
-            <Text style={styles.statNumberDark}>8</Text>
+            <Text style={styles.statNumberDark}>{stats.itens_usados}</Text>
             <Text style={styles.statLabel}>Itens usados</Text>
           </View>
         </View>
 
         {/* --- LISTA DE OPÇÕES --- */}
         <View style={styles.menuContainer}>
-          <OpcaoMenu icone="time-outline" titulo="Histórico de Requisições" onPress={() => console.log('Ir para histórico')} />
+          <OpcaoMenu icone="time-outline" titulo="Histórico de Requisições" onPress={() => router.push('/reservas')} />
           <OpcaoMenu icone="person-outline" titulo="Editar perfil" onPress={() => router.push('/editar-perfil')} />
           <OpcaoMenu icone="help-circle-outline" titulo="Ajuda & Suporte" onPress={() => console.log('Ir para ajuda')} />
           <View style={styles.espacadorMenu} />

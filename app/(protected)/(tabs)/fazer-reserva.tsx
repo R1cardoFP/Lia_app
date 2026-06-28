@@ -2,8 +2,8 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { default as React, useEffect, useState } from 'react';
-import { Alert, FlatList, ScrollView, StatusBar, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { LocaleConfig } from 'react-native-calendars';
+import { Alert, FlatList, Modal, ScrollView, StatusBar, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Calendar, LocaleConfig } from 'react-native-calendars';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useReserva } from '../../../contexts/reservaContext';
 import api from '../../../services/api';
@@ -146,18 +146,21 @@ export default function FazerReserva() {
   // ========================================================
   // RENDERIZAÇÃO 1: FORMULÁRIO COM DATE PICKERS E SELECTS
   // ========================================================
-if (!temReservaAtiva) {
+// ========================================================
+  // RENDERIZAÇÃO 1: FORMULÁRIO COM DATE PICKERS E SELECTS
+  // ========================================================
+  if (!temReservaAtiva) {
     return (
       <SafeAreaView style={styles.safeArea}>
         <StatusBar backgroundColor="#ffffff" barStyle="dark-content" />
 
-        {/* HEADER BRANCO NO TOPO (Sem linha inferior e com espaçamento correto) */}
+        {/* HEADER CUSTOMIZADO (Igual ao ecrã de histórico) */}
         <View style={styles.headerCustom}>
           <Text style={styles.tituloPrincipal}>Nova Reserva</Text>
           <Text style={styles.subtituloPrincipal}>Define o período e as informações da tua requisição</Text>
         </View>
 
-        {/* ESTA VIEW GARANTE QUE TODO O FUNDO ATÉ ÀS TABS FICA AZUL CLARINHO */}
+        {/* CORPO COM FUNDO AZUL ATÉ ÀS TABS */}
         <View style={styles.corpoFormulario}>
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContainer}>
             <View style={styles.containerFormulario}>
@@ -203,7 +206,7 @@ if (!temReservaAtiva) {
                 />
               </View>
 
-              {/* CENTRO DE CUSTO (SELECT) */}
+              {/* CENTRO DE CUSTO */}
               <Text style={styles.label}>Centro de Custo</Text>
               <TouchableOpacity style={styles.inputWrapper} onPress={() => setModalCentroCusto(true)}>
                 <Ionicons name="business-outline" size={15} color="#b0bfcc" style={styles.inputIcon} />
@@ -246,6 +249,7 @@ if (!temReservaAtiva) {
                 </>
               )}
 
+              {/* BOTÃO SUBMETER */}
               <TouchableOpacity style={styles.btnIniciar} onPress={handleIniciarReserva}>
                 <Text style={styles.btnIniciarText}>Escolher Equipamentos</Text>
                 <Ionicons name="arrow-forward" size={20} color="#FFF" style={{ marginLeft: 8 }} />
@@ -254,9 +258,84 @@ if (!temReservaAtiva) {
           </ScrollView>
         </View>
 
+        {/* ======================================================== */}
+        {/* OS TEUS MODAIS ORIGINAIS (Recuperados com sucesso!)       */}
+        {/* ======================================================== */}
+        
+        {/* MODAL DATA INÍCIO */}
+        <Modal visible={modalDataInicio} transparent animationType="fade">
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Data de Início</Text>
+              <Calendar 
+                theme={{ todayTextColor: '#1A237E', arrowColor: '#1A237E' }}
+                onDayPress={(day) => { setDataInicio(day.dateString); setModalDataInicio(false); }}
+              />
+              <TouchableOpacity style={styles.modalCancelar} onPress={() => setModalDataInicio(false)}>
+                <Text style={styles.modalCancelarText}>Cancelar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+
+        {/* MODAL DATA FIM */}
+        <Modal visible={modalDataFim} transparent animationType="fade">
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Data de Fim</Text>
+              <Calendar 
+                theme={{ todayTextColor: '#1A237E', arrowColor: '#1A237E' }}
+                minDate={dataInicio || undefined}
+                onDayPress={(day) => { setDataFim(day.dateString); setModalDataFim(false); }}
+              />
+              <TouchableOpacity style={styles.modalCancelar} onPress={() => setModalDataFim(false)}>
+                <Text style={styles.modalCancelarText}>Cancelar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+
+        {/* MODAL CENTRO DE CUSTO */}
+        <Modal visible={modalCentroCusto} transparent animationType="fade">
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Centro de Custo</Text>
+              <ScrollView>
+                {centrosCustoDB.map((cc: any) => (
+                  <TouchableOpacity key={cc.id} style={styles.modalOpcao} onPress={() => { setCentroCusto(cc); setModalCentroCusto(false); }}>
+                    <Text style={[styles.modalOpcaoText, centroCusto?.id === cc.id && styles.modalOpcaoAtiva]}>{cc.name}</Text>
+                    {centroCusto?.id === cc.id && <Ionicons name="checkmark" size={20} color="#1A237E" />}
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+              <TouchableOpacity style={styles.modalCancelar} onPress={() => setModalCentroCusto(false)}>
+                <Text style={styles.modalCancelarText}>Cancelar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+
+        {/* MODAL DIA CÍCLICO */}
+        <Modal visible={modalDiaCiclico} transparent animationType="fade">
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+              <Text style={styles.modalTitle}>Dia da Semana</Text>
+              {DIAS_DA_SEMANA.map((dia) => (
+                <TouchableOpacity key={dia.id} style={styles.modalOpcao} onPress={() => { setDiaCiclico(dia); setModalDiaCiclico(false); }}>
+                  <Text style={[styles.modalOpcaoText, diaCiclico?.id === dia.id && styles.modalOpcaoAtiva]}>{dia.label}</Text>
+                  {diaCiclico?.id === dia.id && <Ionicons name="checkmark" size={20} color="#1A237E" />}
+                </TouchableOpacity>
+              ))}
+              <TouchableOpacity style={styles.modalCancelar} onPress={() => setModalDiaCiclico(false)}>
+                <Text style={styles.modalCancelarText}>Cancelar</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </Modal>
+
       </SafeAreaView>
     );
-}
+  }
 
   // ========================================================
   // RENDERIZAÇÃO 2: CARRINHO / RESUMO COM ITENS

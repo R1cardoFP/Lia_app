@@ -6,7 +6,26 @@ import { ActivityIndicator, Alert, Image, ScrollView, StyleSheet, Text, Touchabl
 import { Calendar } from 'react-native-calendars';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useReserva } from '../../../contexts/reservaContext';
-import api from '../../../services/api';
+import api, { API_URL } from '../../../services/api';
+
+
+interface ItemCarrinho {
+  id: string | number;
+  is_kit: boolean;
+  quantidadeSelecionada: number;
+}
+
+interface Reserva {
+  dataInicio: string;
+  dataFim: string;
+  itens: ItemCarrinho[];
+}
+
+interface ContextoReservaProps {
+  adicionarItem: (item: any, quantidade: number) => void;
+  temReservaAtiva: boolean;
+  reserva: Reserva;
+}
 
 export default function DetalhesEquipamento() {
   const { id } = useLocalSearchParams();
@@ -14,7 +33,7 @@ export default function DetalhesEquipamento() {
   const insets = useSafeAreaInsets();
   
   // CONSUMIR O ESTADO GLOBAL DA RESERVA
-  const { adicionarItem, temReservaAtiva, reserva } = useReserva();
+  const { adicionarItem, temReservaAtiva, reserva } = useReserva() as ContextoReservaProps;
   
   const [item, setItem] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -29,7 +48,7 @@ export default function DetalhesEquipamento() {
   // Se o item já estiver no carrinho, começa com a quantidade que estava lá guardada
   useEffect(() => {
     if (item && temReservaAtiva) {
-      const itemNoCarrinho = reserva.itens.find((i: any) => i.id === item.id && i.is_kit === item.is_kit);
+      const itemNoCarrinho = reserva.itens.find((i: ItemCarrinho) => i.id === item.id && i.is_kit === item.is_kit);
       if (itemNoCarrinho) {
         setQuantidadeSelecionada(itemNoCarrinho.quantidadeSelecionada);
       }
@@ -112,7 +131,7 @@ export default function DetalhesEquipamento() {
           </TouchableOpacity>
           
           {item.image ? (
-            <Image source={{ uri: `http://192.168.1.81:8000/${item.image}` }} style={styles.coverImage} />
+            <Image source={{ uri: `${API_URL}/${item.image}` }} style={styles.coverImage} />
           ) : (
             <View style={[styles.coverImage, { backgroundColor: '#E0E0E0', justifyContent: 'center', alignItems: 'center' }]}>
               <Ionicons name="camera-outline" size={60} color="#9E9E9E" />
@@ -124,7 +143,10 @@ export default function DetalhesEquipamento() {
           <View style={styles.tituloRow}>
             <Text style={styles.nomeItem}>{item.nome || 'Equipamento'}</Text>
             <View style={[styles.badgeDisponivel, item.quantidade === 0 && { backgroundColor: '#FFEBEE' }]}>
-              <Text style={[styles.badgeText, item.quantidade === 0 && { color: '#E53935' }]}>
+              <Text style={[
+                styles.badgeText, 
+                item.quantidade === 0 && { color: '#c05060' }
+              ]}>
                 {item.quantidade === 0 ? 'Esgotado' : `${item.quantidade} Unid.`}
               </Text>
             </View>
@@ -180,14 +202,14 @@ export default function DetalhesEquipamento() {
                 style={styles.stepperBtn} 
                 onPress={() => setQuantidadeSelecionada(q => Math.max(1, q - 1))}
               >
-                <Ionicons name="remove" size={18} color="#1A237E" />
+                <Ionicons name="remove" size={18} color="#065294" />
               </TouchableOpacity>
               <Text style={styles.stepperValue}>{quantidadeSelecionada}</Text>
               <TouchableOpacity 
                 style={styles.stepperBtn} 
                 onPress={() => setQuantidadeSelecionada(q => Math.min(item.quantidade, q + 1))}
               >
-                <Ionicons name="add" size={18} color="#1A237E" />
+                <Ionicons name="add" size={18} color="#065294" />
               </TouchableOpacity>
             </View>
 
@@ -237,13 +259,13 @@ const styles = StyleSheet.create({
   
   bottomBar: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#FFF', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 15, borderTopWidth: 1, borderTopColor: '#EEEEEE', elevation: 15, shadowColor: '#000', shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.1, shadowRadius: 10 },
   precoLabel: { fontSize: 13, color: '#757575', marginBottom: 2 },
-  precoValor: { fontSize: 20, fontWeight: 'bold', color: '#1A237E' },
+  precoValor: { fontSize: 20, fontWeight: 'bold', color: '#065294' },
   
   containerAcoesReserva: { flexDirection: 'row', alignItems: 'center' },
   stepperContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F5F7F9', borderWidth: 1, borderColor: '#E0E6ED', borderRadius: 10, padding: 4, marginRight: 12 },
   stepperBtn: { width: 32, height: 32, backgroundColor: '#FFF', borderRadius: 8, justifyContent: 'center', alignItems: 'center', elevation: 1, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 2 },
   stepperValue: { fontSize: 16, fontWeight: 'bold', color: '#212121', paddingHorizontal: 15 },
   
-  btnReservar: { backgroundColor: '#1A237E', flexDirection: 'row', paddingHorizontal: 22, paddingVertical: 12, borderRadius: 12, alignItems: 'center', height: 44 },
+  btnReservar: { backgroundColor: '#065294', flexDirection: 'row', paddingHorizontal: 22, paddingVertical: 12, borderRadius: 12, alignItems: 'center', height: 44 },
   btnReservarText: { color: '#FFF', fontSize: 15, fontWeight: 'bold' }
 });

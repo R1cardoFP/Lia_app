@@ -1,9 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
-import React, { useEffect, useState } from 'react';
-import { Alert, FlatList, Modal, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { Calendar, LocaleConfig } from 'react-native-calendars';
+import { default as React, useEffect, useState } from 'react';
+import { Alert, FlatList, ScrollView, StatusBar, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { LocaleConfig } from 'react-native-calendars';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useReserva } from '../../../contexts/reservaContext';
 import api from '../../../services/api';
@@ -146,158 +146,117 @@ export default function FazerReserva() {
   // ========================================================
   // RENDERIZAÇÃO 1: FORMULÁRIO COM DATE PICKERS E SELECTS
   // ========================================================
-  if (!temReservaAtiva) {
+if (!temReservaAtiva) {
     return (
       <SafeAreaView style={styles.safeArea}>
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContainer}>
+        <StatusBar backgroundColor="#ffffff" barStyle="dark-content" />
+
+        {/* HEADER BRANCO NO TOPO (Sem linha inferior e com espaçamento correto) */}
+        <View style={styles.headerCustom}>
           <Text style={styles.tituloPrincipal}>Nova Reserva</Text>
           <Text style={styles.subtituloPrincipal}>Define o período e as informações da tua requisição</Text>
+        </View>
 
-          <View style={styles.cardFormulario}>
-            
-            {/* CAMPOS DE DATA (DATE PICKERS) */}
-            <View style={styles.rowDatas}>
-              <View style={[styles.inputGroup, { flex: 1, marginRight: 10 }]}>
-                <Text style={styles.label}>Data de Início</Text>
-                <TouchableOpacity style={styles.dropdownInput} onPress={() => setModalDataInicio(true)}>
-                  <Text style={dataInicio ? styles.dropdownText : styles.dropdownPlaceholder}>
-                    {dataInicio || 'Selecionar...'}
-                  </Text>
-                  <Ionicons name="calendar-outline" size={20} color="#757575" />
-                </TouchableOpacity>
-              </View>
-
-              <View style={[styles.inputGroup, { flex: 1 }]}>
-                <Text style={styles.label}>Data de Fim</Text>
-                <TouchableOpacity style={styles.dropdownInput} onPress={() => setModalDataFim(true)}>
-                  <Text style={dataFim ? styles.dropdownText : styles.dropdownPlaceholder}>
-                    {dataFim || 'Selecionar...'}
-                  </Text>
-                  <Ionicons name="calendar-outline" size={20} color="#757575" />
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            {/* MOTIVO */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Motivo / Justificação</Text>
-              <TextInput style={[styles.input, { height: 80, textAlignVertical: 'top', paddingTop: 10 }]} multiline placeholder="Ex: Projeto final de multimédia..." placeholderTextColor="#9E9E9E" value={motivo} onChangeText={setMotivo} />
-            </View>
-
-            {/* CENTRO DE CUSTO (SELECT) */}
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>Centro de Custo</Text>
-              <TouchableOpacity style={styles.dropdownInput} onPress={() => setModalCentroCusto(true)}>
-                <Text style={centroCusto ? styles.dropdownText : styles.dropdownPlaceholder}>
-                  {centroCusto ? centroCusto.name : 'Selecionar centro de custo...'}
-                </Text>
-                <Ionicons name="chevron-down" size={20} color="#757575" />
-              </TouchableOpacity>
-            </View>
-
-            {/* SWITCH CÍCLICA */}
-            <View style={styles.rowSwitch}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.labelSwitch}>Reserva Cíclica</Text>
-                <Text style={styles.sublabelSwitch}>Pretendes repetir este dia semanalmente?</Text>
-              </View>
-              <Switch value={isCiclica} onValueChange={setIsCiclica} trackColor={{ false: '#767577', true: '#1A237E' }} />
-            </View>
-
-            {/* DIA DA SEMANA (SÓ APARECE SE FOR CÍCLICA) */}
-            {isCiclica && (
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Em qual dia da semana?</Text>
-                <TouchableOpacity style={styles.dropdownInput} onPress={() => setModalDiaCiclico(true)}>
-                  <Text style={diaCiclico ? styles.dropdownText : styles.dropdownPlaceholder}>
-                    {diaCiclico ? `Todas as ${diaCiclico.label}s` : 'Selecionar dia...'}
-                  </Text>
-                  <Ionicons name="chevron-down" size={20} color="#757575" />
-                </TouchableOpacity>
-              </View>
-            )}
-
-            <TouchableOpacity style={styles.btnIniciar} onPress={handleIniciarReserva}>
-              <Text style={styles.btnIniciarText}>Escolher Equipamentos</Text>
-              <Ionicons name="arrow-forward" size={20} color="#FFF" style={{ marginLeft: 8 }} />
-            </TouchableOpacity>
-          </View>
-        </ScrollView>
-
-        {/* MODAL DATA INÍCIO */}
-        <Modal visible={modalDataInicio} transparent animationType="fade">
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>Data de Início</Text>
-              <Calendar 
-                theme={{ todayTextColor: '#1A237E', arrowColor: '#1A237E' }}
-                onDayPress={(day) => { setDataInicio(day.dateString); setModalDataInicio(false); }}
-              />
-              <TouchableOpacity style={styles.modalCancelar} onPress={() => setModalDataInicio(false)}>
-                <Text style={styles.modalCancelarText}>Cancelar</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </Modal>
-
-        {/* MODAL DATA FIM */}
-        <Modal visible={modalDataFim} transparent animationType="fade">
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>Data de Fim</Text>
-              <Calendar 
-                theme={{ todayTextColor: '#1A237E', arrowColor: '#1A237E' }}
-                minDate={dataInicio || undefined}
-                onDayPress={(day) => { setDataFim(day.dateString); setModalDataFim(false); }}
-              />
-              <TouchableOpacity style={styles.modalCancelar} onPress={() => setModalDataFim(false)}>
-                <Text style={styles.modalCancelarText}>Cancelar</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </Modal>
-
-        {/* MODAL CENTRO DE CUSTO */}
-        <Modal visible={modalCentroCusto} transparent animationType="fade">
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>Centro de Custo</Text>
-              <ScrollView>
-                {centrosCustoDB.map((cc: any) => (
-                  <TouchableOpacity key={cc.id} style={styles.modalOpcao} onPress={() => { setCentroCusto(cc); setModalCentroCusto(false); }}>
-                    <Text style={[styles.modalOpcaoText, centroCusto?.id === cc.id && styles.modalOpcaoAtiva]}>{cc.name}</Text>
-                    {centroCusto?.id === cc.id && <Ionicons name="checkmark" size={20} color="#1A237E" />}
+        {/* ESTA VIEW GARANTE QUE TODO O FUNDO ATÉ ÀS TABS FICA AZUL CLARINHO */}
+        <View style={styles.corpoFormulario}>
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContainer}>
+            <View style={styles.containerFormulario}>
+              
+              {/* CAMPOS DE DATA LADO A LADO */}
+              <View style={styles.gridRow}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.label}>Data de Início</Text>
+                  <TouchableOpacity style={styles.inputWrapper} onPress={() => setModalDataInicio(true)}>
+                    <Ionicons name="calendar-outline" size={15} color="#b0bfcc" style={styles.inputIcon} />
+                    <View style={styles.inpFake}>
+                      <Text style={dataInicio ? styles.dropdownText : styles.dropdownPlaceholder}>
+                        {dataInicio || 'Selecionar...'}
+                      </Text>
+                    </View>
                   </TouchableOpacity>
-                ))}
-              </ScrollView>
-              <TouchableOpacity style={styles.modalCancelar} onPress={() => setModalCentroCusto(false)}>
-                <Text style={styles.modalCancelarText}>Cancelar</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </Modal>
+                </View>
 
-        {/* MODAL DIA CÍCLICO */}
-        <Modal visible={modalDiaCiclico} transparent animationType="fade">
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <Text style={styles.modalTitle}>Dia da Semana</Text>
-              {DIAS_DA_SEMANA.map((dia) => (
-                <TouchableOpacity key={dia.id} style={styles.modalOpcao} onPress={() => { setDiaCiclico(dia); setModalDiaCiclico(false); }}>
-                  <Text style={[styles.modalOpcaoText, diaCiclico?.id === dia.id && styles.modalOpcaoAtiva]}>{dia.label}</Text>
-                  {diaCiclico?.id === dia.id && <Ionicons name="checkmark" size={20} color="#1A237E" />}
-                </TouchableOpacity>
-              ))}
-              <TouchableOpacity style={styles.modalCancelar} onPress={() => setModalDiaCiclico(false)}>
-                <Text style={styles.modalCancelarText}>Cancelar</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.label}>Data de Fim</Text>
+                  <TouchableOpacity style={styles.inputWrapper} onPress={() => setModalDataFim(true)}>
+                    <Ionicons name="calendar-outline" size={15} color="#b0bfcc" style={styles.inputIcon} />
+                    <View style={styles.inpFake}>
+                      <Text style={dataFim ? styles.dropdownText : styles.dropdownPlaceholder}>
+                        {dataFim || 'Selecionar...'}
+                      </Text>
+                    </View>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* MOTIVO */}
+              <Text style={styles.label}>Motivo / Justificação</Text>
+              <View style={styles.inputWrapper}>
+                <Ionicons name="document-text-outline" size={15} color="#b0bfcc" style={[styles.inputIcon, { top: 14 }]} />
+                <TextInput 
+                  style={[styles.inp, { height: 90, textAlignVertical: 'top', paddingTop: 12, paddingLeft: 38 }]} 
+                  multiline 
+                  placeholder="Ex: Projeto final de multimédia..." 
+                  placeholderTextColor="#b0bfcc" 
+                  value={motivo} 
+                  onChangeText={setMotivo} 
+                />
+              </View>
+
+              {/* CENTRO DE CUSTO (SELECT) */}
+              <Text style={styles.label}>Centro de Custo</Text>
+              <TouchableOpacity style={styles.inputWrapper} onPress={() => setModalCentroCusto(true)}>
+                <Ionicons name="business-outline" size={15} color="#b0bfcc" style={styles.inputIcon} />
+                <View style={styles.inpFake}>
+                  <Text style={centroCusto ? styles.dropdownText : styles.dropdownPlaceholder}>
+                    {centroCusto ? centroCusto.name : 'Selecionar centro de custo...'}
+                  </Text>
+                </View>
+                <Ionicons name="chevron-down" size={14} color="#b0bfcc" style={styles.inputIconRight} />
+              </TouchableOpacity>
+
+              {/* SWITCH CÍCLICA */}
+              <View style={styles.rowSwitch}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.labelSwitch}>Reserva Cíclica</Text>
+                  <Text style={styles.sublabelSwitch}>Pretendes repetir este dia semanalmente?</Text>
+                </View>
+                <Switch 
+                  value={isCiclica} 
+                  onValueChange={setIsCiclica} 
+                  trackColor={{ false: '#9E9E9E', true: '#00a385' }}
+                  thumbColor="#fff"
+                  ios_backgroundColor="#9E9E9E"
+                />
+              </View>
+
+              {/* DIA DA SEMANA */}
+              {isCiclica && (
+                <>
+                  <Text style={styles.label}>Em qual dia da semana?</Text>
+                  <TouchableOpacity style={styles.inputWrapper} onPress={() => setModalDiaCiclico(true)}>
+                    <Ionicons name="time-outline" size={15} color="#b0bfcc" style={styles.inputIcon} />
+                    <View style={styles.inpFake}>
+                      <Text style={diaCiclico ? styles.dropdownText : styles.dropdownPlaceholder}>
+                        {diaCiclico ? `Todas as ${diaCiclico.label}s` : 'Selecionar dia...'}
+                      </Text>
+                    </View>
+                    <Ionicons name="chevron-down" size={14} color="#b0bfcc" style={styles.inputIconRight} />
+                  </TouchableOpacity>
+                </>
+              )}
+
+              <TouchableOpacity style={styles.btnIniciar} onPress={handleIniciarReserva}>
+                <Text style={styles.btnIniciarText}>Escolher Equipamentos</Text>
+                <Ionicons name="arrow-forward" size={20} color="#FFF" style={{ marginLeft: 8 }} />
               </TouchableOpacity>
             </View>
-          </View>
-        </Modal>
+          </ScrollView>
+        </View>
 
       </SafeAreaView>
     );
-  }
+}
 
   // ========================================================
   // RENDERIZAÇÃO 2: CARRINHO / RESUMO COM ITENS
@@ -341,7 +300,7 @@ export default function FazerReserva() {
           <View style={styles.cardItemCarrinho}>
             <View style={styles.itemCarrinhoInfo}>
               <Text style={styles.itemCarrinhoNome} numberOfLines={1}>{item.nome}</Text>
-              <Text style={styles.itemCarrinhoSub}>{item.model} • Qtd: <Text style={{ fontWeight: 'bold', color: '#1A237E' }}>{item.quantidadeSelecionada}</Text></Text>
+              <Text style={styles.itemCarrinhoSub}>{item.model} • Qtd: <Text style={{ fontWeight: 'bold', color: '#065294' }}>{item.quantidadeSelecionada}</Text></Text>
             </View>
             <View style={styles.rowAcoesCarrinho}>
               <Text style={styles.itemCarrinhoPreco}>{item.preco || '20,00'}€/dia</Text>
@@ -366,32 +325,145 @@ export default function FazerReserva() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#F8F9FA' },
-  scrollContainer: { padding: 20 },
-  tituloPrincipal: { fontSize: 26, fontWeight: 'bold', color: '#1A237E', marginBottom: 4 },
-  subtituloPrincipal: { fontSize: 14, color: '#757575', marginBottom: 25 },
-  cardFormulario: { backgroundColor: '#FFF', borderRadius: 16, padding: 20, elevation: 3, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10 },
+
+
+safeArea: { 
+    flex: 1, 
+    backgroundColor: '#ffffff' 
+  },
+  headerCustom: { 
+    backgroundColor: '#fff', 
+    paddingHorizontal: 20, 
+    paddingTop: 20, 
+    paddingBottom: 13,
+    
+  },
+  corpoFormulario: {
+    flex: 1,
+    backgroundColor: '#f4f7fc', // Garante que o azul clarinho vai até às tabs
+  },
+  scrollContainer: { 
+    paddingBottom: 40,
+    paddingTop: 35,
+  },
+  containerFormulario: { 
+    flexDirection: 'column', 
+    gap: 14,
+    paddingHorizontal: 20 // Mantém os paddings dos inputs perfeitos nas laterais
+  },
+
+  
+  tituloPrincipal: { 
+    fontSize: 22,          
+    fontWeight: '800',     
+    color: '#0d1f30',      
+    marginBottom: 4 
+  },
+  subtituloPrincipal: { 
+    fontSize: 12,          
+    color: '#7a94aa',      
+    marginTop: 2 
+  },
+  
+
+  // ESTILO DOS CAMPOS DO REGISTO (LIGEIRAMENTE MAIORES)
+  label: { 
+    fontSize: 12, 
+    fontWeight: '600', 
+    color: '#9E9E9E',
+    marginBottom: 2, 
+    letterSpacing: 0.5, 
+    textTransform: 'uppercase', 
+  }, 
+  inputWrapper: { 
+    position: 'relative', 
+    justifyContent: 'center', 
+    marginBottom: 4,
+  }, 
+  inputIcon: { 
+    position: 'absolute', 
+    left: 12, 
+    zIndex: 1, 
+  }, 
+  inputIconRight: {
+    position: 'absolute', 
+    right: 12, 
+    zIndex: 1, 
+  },
+  inp: { 
+    backgroundColor: '#fff', 
+    borderWidth: 1, 
+    borderColor: '#e2e8f0', 
+    borderRadius: 8, 
+    paddingLeft: 38, 
+    paddingRight: 12, 
+    fontSize: 14, 
+    paddingVertical: 12, 
+    color: '#333', 
+  }, 
+  inpFake: {
+    backgroundColor: '#fff', 
+    borderWidth: 1, 
+    borderColor: '#e2e8f0', 
+    borderRadius: 8, 
+    paddingLeft: 38, 
+    paddingRight: 30, 
+    fontSize: 14,
+    paddingVertical: 12,
+    justifyContent: 'center',
+    height: 46,
+  },
+  gridRow: { 
+    flexDirection: 'row', 
+    gap: 12, 
+  }, 
+  btnP: { 
+    backgroundColor: '#00a385', 
+    borderRadius: 8, 
+    paddingVertical: 15, 
+    flexDirection: 'row',
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    marginTop: 15, 
+  }, 
+  btnText: { 
+    color: '#fff', 
+    fontSize: 15, 
+    fontWeight: '700', 
+  },
   rowDatas: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 },
   inputGroup: { marginBottom: 18 },
-  label: { fontSize: 13, fontWeight: 'bold', color: '#546E7A', marginBottom: 8, textTransform: 'uppercase' },
+
   input: { backgroundColor: '#F5F7F9', borderWidth: 1, borderColor: '#E0E6ED', borderRadius: 12, paddingHorizontal: 15, height: 48, fontSize: 15, color: '#212121' },
   
   dropdownInput: { flexDirection: 'row', backgroundColor: '#F5F7F9', borderWidth: 1, borderColor: '#E0E6ED', borderRadius: 12, paddingHorizontal: 15, height: 48, alignItems: 'center', justifyContent: 'space-between' },
   dropdownText: { fontSize: 15, color: '#212121' },
   dropdownPlaceholder: { fontSize: 15, color: '#9E9E9E' },
 
-  rowSwitch: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#F8F9FA', padding: 15, borderRadius: 12, marginBottom: 25 },
+  rowSwitch: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#ffffff', padding: 15, borderRadius: 12, marginBottom: 25 },
   labelSwitch: { fontSize: 15, fontWeight: 'bold', color: '#212121' },
   sublabelSwitch: { fontSize: 12, color: '#757575', marginTop: 2, paddingRight: 10 },
-  btnIniciar: { backgroundColor: '#1A237E', height: 52, borderRadius: 12, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 10 },
-  btnIniciarText: { color: '#FFF', fontSize: 16, fontWeight: 'bold' },
+  btnIniciar: { 
+    backgroundColor: '#065294',   // Mantém a tua cor azul original
+    borderRadius: 8,              // Arredondamento igual ao do registo
+    paddingVertical: 15,          // Altura baseada em padding igual ao do registo
+    flexDirection: 'row',
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    marginTop: 15, 
+  }, 
+  btnIniciarText: { 
+    color: '#FFF', 
+    fontSize: 15,                 // Tamanho da fonte igual ao do registo
+    fontWeight: '700',            // Peso da fonte igual ao do registo
+  },
   
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 },
   modalContent: { backgroundColor: '#FFF', borderRadius: 16, padding: 20, width: '100%', maxWidth: 360, elevation: 5, maxHeight: '80%' },
   modalTitle: { fontSize: 18, fontWeight: 'bold', color: '#212121', marginBottom: 15, textAlign: 'center' },
   modalOpcao: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: '#F0F0F0', alignItems: 'center' },
   modalOpcaoText: { fontSize: 16, color: '#546E7A', flex: 1 },
-  modalOpcaoAtiva: { color: '#1A237E', fontWeight: 'bold' },
+  modalOpcaoAtiva: { color: '#065294', fontWeight: 'bold' },
   modalCancelar: { marginTop: 15, paddingVertical: 10, alignItems: 'center' },
   modalCancelarText: { fontSize: 16, fontWeight: 'bold', color: '#E53935' },
 
@@ -403,7 +475,7 @@ const styles = StyleSheet.create({
   infoFixaTexto: { fontSize: 14, color: '#37474F', marginBottom: 4 },
   carrinhoVazioContainer: { alignItems: 'center', marginTop: 60, padding: 20 },
   carrinhoVazioTexto: { fontSize: 15, color: '#78909C', textAlign: 'center', marginTop: 15, marginBottom: 20 },
-  btnIrAoCatalogo: { backgroundColor: '#1A237E', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 10 },
+  btnIrAoCatalogo: { backgroundColor: '#065294', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 10 },
   btnIrAoCatalogoText: { color: '#FFF', fontWeight: 'bold' },
   cardItemCarrinho: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#FFF', padding: 15, borderRadius: 12, marginBottom: 10, elevation: 1, shadowColor: '#000', shadowOpacity: 0.02, shadowRadius: 5 },
   itemCarrinhoInfo: { flex: 1, marginRight: 10 },

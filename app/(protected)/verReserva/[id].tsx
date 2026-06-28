@@ -1,7 +1,9 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import api from "../../../services/api"; // Ajusta o caminho do import se necessário
+import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import api from "../../../services/api";
+
 
 type PivotData = {
   quantity: number;
@@ -61,6 +63,45 @@ export default function DetalheReservaPage() {
     if (id) fetchDetalheReserva();
   }, [id]);
 
+const handleCancelarReserva = () => {
+    Alert.alert(
+      "Cancelar Reserva",
+      "Tens a certeza que queres cancelar este pedido? Os equipamentos deixarão de estar reservados para ti.",
+      [
+        { text: "Voltar Atrás", style: "cancel" },
+        { text: "Sim, Cancelar", style: "destructive", onPress: submeterCancelamento }
+      ]
+    );
+  };
+
+  const submeterCancelamento = async () => {
+    try {
+      const token = await AsyncStorage.getItem('userToken');
+      // Faz o pedido POST para a rota que acabámos de criar no Laravel
+      const response = await api.post(`/reservas/${id}/cancelar`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+
+      if (response.data.status === 'success') {
+        // Atualiza o estado da UI imediatamente antes de saltar fora
+        setReserva(prev => prev ? { ...prev, reserve_state_id: 10 } : null);
+
+        Alert.alert("Cancelada", "A tua reserva foi cancelada com sucesso.", [
+          { 
+            text: "OK", 
+            onPress: () => {
+              router.replace('/(tabs)/reservas');
+            } 
+          }
+        ]);
+      }
+    } catch (error: any) {
+      const mensagemErro = error.response?.data?.message || "Ocorreu um erro ao cancelar.";
+      Alert.alert("Erro", mensagemErro);
+    }
+  };
+
+
   const getStatusStyles = (stateId: number) => {
     switch (stateId) {
       case 1:
@@ -79,6 +120,8 @@ export default function DetalheReservaPage() {
         return { texto: 'Devolvido', sc: 'rgba(0, 163, 133, 0.12)', tc: '#00a385' };
       case 3:
         return { texto: 'recusada', sc: 'rgba(192, 80, 96, 0.12)', tc: '#c05060' };
+      case 10:
+        return { texto: 'cancelada', sc: 'rgba(192, 80, 96, 0.12)', tc: '#c05060' };
       default:
         return { texto: 'Desconhecido', sc: '#e8f0f9', tc: '#5a7a9a' };
     }
@@ -195,6 +238,16 @@ export default function DetalheReservaPage() {
           })}
         </View>
       )}
+
+      {reserva.reserve_state_id === 1 && (
+        <TouchableOpacity 
+          style={styles.botaoCancelar} 
+          onPress={handleCancelarReserva}
+        >
+          <Text style={styles.textoBotaoCancelar}>Cancelar Reserva</Text>
+        </TouchableOpacity>
+      )}
+
       <View style={{ height: 40 }} />
     </ScrollView>
   );
@@ -229,5 +282,7 @@ const styles = StyleSheet.create({
   badgeText: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase' },
   
   badgeQtd: { backgroundColor: '#f4f7fc', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: '#eaf0f8' },
-  badgeQtdText: { color: '#065294', fontWeight: 'bold', fontSize: 14 }
+  badgeQtdText: { color: '#065294', fontWeight: 'bold', fontSize: 14 },
+  botaoCancelar: { backgroundColor: '#FFEBEE', borderWidth: 1, borderColor: '#ffcdd2', borderRadius: 12, paddingVertical: 14, marginHorizontal: 14, marginTop: 20, alignItems: 'center' },
+  textoBotaoCancelar: { color: '#c62828', fontSize: 15, fontWeight: 'bold' }
 });

@@ -1,57 +1,54 @@
-import { useAuth } from "@/hooks/useAuth";
 import { Ionicons } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { Calendar, LocaleConfig } from 'react-native-calendars';
+import { ActivityIndicator, Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Calendar } from 'react-native-calendars';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import api, { API_URL } from '../../../services/api';
-
-
-interface DetalhesItem {
-  id: number;
-  nome: string;
-  model: string;
-  image?: string;
-  quantidade: number;
-  categoria: string;
-  observacao?: string;
-  acessorios?: string;
-  preco: string | number;
-}
-
-
-LocaleConfig.locales['pt'] = {
-  monthNames: ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'],
-  monthNamesShort: ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'],
-  dayNames: ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado'],
-  dayNamesShort: ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'],
-  today: 'Hoje'
-};
-LocaleConfig.defaultLocale = 'pt';
+import { useReserva } from '../../../contexts/reservaContext';
+import api from '../../../services/api';
 
 export default function DetalhesEquipamento() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   
-  // Esta função deteta o tamanho da barra de navegação do telemóvel!
-  const insets = useSafeAreaInsets(); 
-
-  const { logout } = useAuth();
+  // CONSUMIR O ESTADO GLOBAL DA RESERVA
+  const { adicionarItem, temReservaAtiva, reserva } = useReserva();
   
-
-  const [item, setItem] = useState<DetalhesItem | null>(null);
+  const [item, setItem] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  
+  // Estado local para controlar a quantidade que o utilizador quer levar
+  const [quantidadeSelecionada, setQuantidadeSelecionada] = useState(1);
 
   useEffect(() => {
     carregarDetalhes();
   }, [id]);
 
+  // Se o item já estiver no carrinho, começa com a quantidade que estava lá guardada
+  useEffect(() => {
+    if (item && temReservaAtiva) {
+      const itemNoCarrinho = reserva.itens.find((i: any) => i.id === item.id && i.is_kit === item.is_kit);
+      if (itemNoCarrinho) {
+        setQuantidadeSelecionada(itemNoCarrinho.quantidadeSelecionada);
+      }
+    }
+  }, [item]);
+
   const carregarDetalhes = async () => {
     try {
+      const token = await AsyncStorage.getItem('userToken');
+      
+      let endpoint = `/item/${id}`;
 
+      if (temReservaAtiva) {
+        endpoint += `?start_date=${reserva.dataInicio}&end_date=${reserva.dataFim}`;
+      }
 
-      const response = await api.get(`/item/${id}`);
+      const response = await api.get(endpoint, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
 
       if (response.data.status === 'success') {
         setItem(response.data.data);
@@ -61,6 +58,25 @@ export default function DetalhesEquipamento() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleAdicionarAoCarrinho = () => {
+    if (item.quantidade === 0) {
+      Alert.alert('Indisponível', 'Não existem unidades disponíveis deste equipamento para as datas selecionadas.');
+      return;
+    }
+
+    // Adiciona o item com a quantidade escolhida ao Contexto Global
+    adicionarItem(item, quantidadeSelecionada);
+    
+    Alert.alert(
+      'Adicionado!', 
+      `${item.nome} adicionado à tua reserva.`,
+      [
+        { text: 'Continuar a Escolher', onPress: () => router.push('/catalogo') },
+        { text: 'Ver Reserva', onPress: () => router.push('/fazer-reserva') }
+      ]
+    );
   };
 
   if (loading) {
@@ -96,7 +112,7 @@ export default function DetalhesEquipamento() {
           </TouchableOpacity>
           
           {item.image ? (
-            <Image source={{ uri: `${API_URL}/${item.image}` }} style={styles.coverImage} />
+            <Image source={{ uri: `http://192.168.1.81:8000/${item.image}` }} style={styles.coverImage} />
           ) : (
             <View style={[styles.coverImage, { backgroundColor: '#E0E0E0', justifyContent: 'center', alignItems: 'center' }]}>
               <Ionicons name="camera-outline" size={60} color="#9E9E9E" />
@@ -107,8 +123,10 @@ export default function DetalhesEquipamento() {
         <View style={styles.infoContainer}>
           <View style={styles.tituloRow}>
             <Text style={styles.nomeItem}>{item.nome || 'Equipamento'}</Text>
-            <View style={styles.badgeDisponivel}>
-              <Text style={styles.badgeText}>{item.quantidade || 1} Unid.</Text>
+            <View style={[styles.badgeDisponivel, item.quantidade === 0 && { backgroundColor: '#FFEBEE' }]}>
+              <Text style={[styles.badgeText, item.quantidade === 0 && { color: '#E53935' }]}>
+                {item.quantidade === 0 ? 'Esgotado' : `${item.quantidade} Unid.`}
+              </Text>
             </View>
           </View>
           
@@ -141,21 +159,57 @@ export default function DetalhesEquipamento() {
               }}
             />
           </View>
-          <Text style={styles.calendarioNota}>Não existem reservas registadas deste item, todos os dias estão disponíveis.</Text>
+          <Text style={styles.calendarioNota}>Os dias ocupados na base de dados aparecerão marcados no calendário.</Text>
 
-          <View style={{ height: 120 }} />
+          <View style={{ height: 140 }} />
         </View>
       </ScrollView>
 
+      {/* --- BOTTOM BAR INTELIGENTE --- */}
       <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom + 10, 20) }]}>
         <View>
-          <Text style={styles.precoLabel}>Preço</Text>
+          <Text style={styles.precoLabel}>Preço Estimado</Text>
           <Text style={styles.precoValor}>{item.preco || '20,00'} € / dia</Text>
         </View>
-        <TouchableOpacity style={styles.btnReservar} onPress={() => console.log('Abrir modal de reserva')}>
-          <Ionicons name="cart-outline" size={20} color="#FFF" style={{ marginRight: 8 }} />
-          <Text style={styles.btnReservarText}>Reservar</Text>
-        </TouchableOpacity>
+
+        {temReservaAtiva ? (
+          // INTERFACE SE TIVER RESERVA ATIVA: SELETOR + BOTAO ADICIONAR
+          <View style={styles.containerAcoesReserva}>
+            <View style={styles.stepperContainer}>
+              <TouchableOpacity 
+                style={styles.stepperBtn} 
+                onPress={() => setQuantidadeSelecionada(q => Math.max(1, q - 1))}
+              >
+                <Ionicons name="remove" size={18} color="#1A237E" />
+              </TouchableOpacity>
+              <Text style={styles.stepperValue}>{quantidadeSelecionada}</Text>
+              <TouchableOpacity 
+                style={styles.stepperBtn} 
+                onPress={() => setQuantidadeSelecionada(q => Math.min(item.quantidade, q + 1))}
+              >
+                <Ionicons name="add" size={18} color="#1A237E" />
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity style={styles.btnReservar} onPress={handleAdicionarAoCarrinho}>
+              <Ionicons name="add-circle-outline" size={20} color="#FFF" style={{ marginRight: 6 }} />
+              <Text style={styles.btnReservarText}>Adicionar</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          // SE NÃO HOUVER RESERVA, BOTÃO SIMPLES QUE LEMBRA QUE É PRECISO DEFINIR DATAS
+          <TouchableOpacity 
+            style={[styles.btnReservar, { backgroundColor: '#757575' }]} 
+            onPress={() => {
+              Alert.alert('Nova Reserva', 'Para requisitar este item, por favor inicia uma nova sessão de reserva indicando o período.', [
+                { text: 'Ir para Reservar', onPress: () => router.push('/fazer-reserva') },
+                { text: 'Cancelar', style: 'cancel' }
+              ]);
+            }}
+          >
+            <Text style={styles.btnReservarText}>Fazer Reserva</Text>
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   );
@@ -180,9 +234,16 @@ const styles = StyleSheet.create({
   descricaoTexto: { fontSize: 15, color: '#616161', lineHeight: 22 },
   calendarioContainer: { borderWidth: 1, borderColor: '#EEEEEE', borderRadius: 12, overflow: 'hidden', marginTop: 10 },
   calendarioNota: { fontSize: 13, color: '#9E9E9E', textAlign: 'center', marginTop: 15, fontStyle: 'italic' },
+  
   bottomBar: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#FFF', flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 15, borderTopWidth: 1, borderTopColor: '#EEEEEE', elevation: 15, shadowColor: '#000', shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.1, shadowRadius: 10 },
   precoLabel: { fontSize: 13, color: '#757575', marginBottom: 2 },
-  precoValor: { fontSize: 20, fontWeight: 'bold', color: '#005596' },
-  btnReservar: { backgroundColor: '#005596', flexDirection: 'row', paddingHorizontal: 25, paddingVertical: 14, borderRadius: 12, alignItems: 'center' },
-  btnReservarText: { color: '#FFF', fontSize: 16, fontWeight: 'bold' }
+  precoValor: { fontSize: 20, fontWeight: 'bold', color: '#1A237E' },
+  
+  containerAcoesReserva: { flexDirection: 'row', alignItems: 'center' },
+  stepperContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F5F7F9', borderWidth: 1, borderColor: '#E0E6ED', borderRadius: 10, padding: 4, marginRight: 12 },
+  stepperBtn: { width: 32, height: 32, backgroundColor: '#FFF', borderRadius: 8, justifyContent: 'center', alignItems: 'center', elevation: 1, shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 2 },
+  stepperValue: { fontSize: 16, fontWeight: 'bold', color: '#212121', paddingHorizontal: 15 },
+  
+  btnReservar: { backgroundColor: '#1A237E', flexDirection: 'row', paddingHorizontal: 22, paddingVertical: 12, borderRadius: 12, alignItems: 'center', height: 44 },
+  btnReservarText: { color: '#FFF', fontSize: 15, fontWeight: 'bold' }
 });

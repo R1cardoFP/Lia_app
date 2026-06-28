@@ -5,6 +5,8 @@ import 'react-native-reanimated';
  
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { AuthProvider } from '../contexts/authContext';
+// 1. IMPORTAR O NOVO CONTEXTO DA RESERVA
+import { ReservaProvider } from '../contexts/reservaContext';
  
 export const unstable_settings = { 
   anchor: 'login', 
@@ -15,33 +17,36 @@ export default function RootLayout() {
  
   return ( 
     <AuthProvider>
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}> 
-      <Stack> 
-        <Stack.Screen name="login"   options={{  
-            headerShown: true,               
-            headerTitle: '',                   
-            headerStyle: { 
-              backgroundColor: '#065294',      
-            }, 
-            headerShadowVisible: false,        
-            headerBackVisible: false,  
-          }} /> 
-        <Stack.Screen  
-          name="register"  
-          options={{  
-            headerShown: true,               
-            headerTitle: '',                   
-            headerStyle: { 
-              backgroundColor: '#00a385',      
-            }, 
-            headerShadowVisible: false,        
-            headerTintColor: '#fff',         
-          }} 
-        /> 
-        <Stack.Screen name="(protected)" options={{ headerShown: false }} /> 
-      </Stack> 
-<StatusBar style="auto" /> 
-</ThemeProvider> 
-</AuthProvider>
-); 
+      {/* 2. ENVOLVER A APLICAÇÃO COM O RESERVA PROVIDER */}
+      <ReservaProvider>
+        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}> 
+          <Stack> 
+            <Stack.Screen name="login"   options={{  
+                headerShown: true,               
+                headerTitle: '',                   
+                headerStyle: { 
+                  backgroundColor: '#065294',      
+                }, 
+                headerShadowVisible: false,        
+                headerBackVisible: false,  
+              }} /> 
+            <Stack.Screen  
+              name="register"  
+              options={{  
+                headerShown: true,               
+                headerTitle: '',                   
+                headerStyle: { 
+                  backgroundColor: '#00a385',      
+                }, 
+                headerShadowVisible: false,        
+                headerTintColor: '#fff',         
+              }} 
+            /> 
+            <Stack.Screen name="(protected)" options={{ headerShown: false }} /> 
+          </Stack> 
+          <StatusBar style="auto" /> 
+        </ThemeProvider> 
+      </ReservaProvider>
+    </AuthProvider>
+  ); 
 }

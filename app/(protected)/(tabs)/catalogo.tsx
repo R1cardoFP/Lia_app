@@ -1,10 +1,11 @@
 import { useAuth } from "@/hooks/useAuth";
-import { router } from 'expo-router'; // <-- Adicionado useFocusEffect
-import React, { useEffect, useState } from 'react'; // <-- Adicionado useCallback
-import { ActivityIndicator, FlatList, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native'; // <-- Adicionado Image e removido SafeAreaView daqui
-import { SafeAreaView } from 'react-native-safe-area-context'; // <-- Adicionado para eliminar o Warning do SafeAreaView
+import { Ionicons } from '@expo/vector-icons';
+import { router, useFocusEffect } from 'expo-router';
+import { default as React, useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, FlatList, Image, ScrollView, StyleSheet, Text, TextInput, TouchableHighlight, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useReserva } from '../../../contexts/reservaContext';
 import api, { API_URL } from '../../../services/api';
-
 
 interface Categoria {
   id: string | number;
@@ -14,31 +15,39 @@ interface Categoria {
 interface Kit {
   id: number;
   name: string;
+  nome?: string;
   description: string;
+  model?: string;
+  image?: string;
   kit_unities_count: number;
+  item_unities_count?: number;
 }
 
 interface Equipamento {
   id: number;
   nome: string;
   model: string;
+  image?: string;
   item_unities_count: number;
 }
 
 export default function Catalogo() {
-
   const { user, logout } = useAuth();
 
-const userName = user?.name || 'Utilizador';
-const partesNome = user?.name?.trim().split(' ') || [];
-const userInitials = partesNome.length > 1 
-  ? (partesNome[0][0] + partesNome[partesNome.length - 1][0]).toUpperCase()
-  : userName.substring(0, 2).toUpperCase();
+  const userName = user?.name || 'Utilizador';
+  const partesNome = user?.name?.trim().split(' ') || [];
+  const userInitials = partesNome.length > 1 
+    ? (partesNome[0][0] + partesNome[partesNome.length - 1][0]).toUpperCase()
+    : userName.substring(0, 2).toUpperCase();
 
- 
-const imageUri = user?.image 
-  ? `${API_URL}/${user.image.startsWith('/') ? user.image.substring(1) : user.image}`
-  : null;
+  const obterUrlImagem = (caminho?: string | null): string | undefined => {
+    if (!caminho) return undefined;
+    return `${API_URL}/${caminho.startsWith('/') ? caminho.substring(1) : caminho}`;
+  };
+
+  const imageUri = user?.image 
+    ? `${API_URL}/${user.image.startsWith('/') ? user.image.substring(1) : user.image}`
+    : undefined;
   
   const [categoriasDB, setCategoriasDB] = useState<Categoria[]>([{ id: 'Todos', description: 'Todos' }]);
   const [categoriaAtiva, setCategoriaAtiva] = useState<string | number>('Todos');
@@ -50,16 +59,27 @@ const imageUri = user?.image
   const [loadingMore, setLoadingMore] = useState(false);
   const [paginaAtual, setPaginaAtual] = useState(1);
   const [temMaisPaginas, setTemMaisPaginas] = useState(true);
+  const [pesquisa, setPesquisa] = useState('');
 
+  const { temReservaAtiva, reserva } = useReserva() as any;
 
+  // Carrega o catálogo ao focar no ecrã (respeitando a pesquisa atual se houver)
+  useFocusEffect(
+    useCallback(() => {
+      carregarCatalogo(1, categoriaAtiva, pesquisa);
+    }, [temReservaAtiva, categoriaAtiva])
+  );
 
+  // DEBOUNCE: Escuta a variável 'pesquisa' e faz a busca automática após 300ms sem digitar
   useEffect(() => {
-    carregarCatalogo(1, 'Todos');
-  }, []);
+    const timer = setTimeout(() => {
+      carregarCatalogo(1, categoriaAtiva, pesquisa);
+    }, 300);
 
-
+    return () => clearTimeout(timer);
+  }, [pesquisa]);
   
-    const carregarCatalogo = async (numeroPagina: number, catId: string | number = categoriaAtiva) => {
+  const carregarCatalogo = async (numeroPagina: number, catId: string | number = categoriaAtiva, termoPesquisa: string = pesquisa) => {
     if (loadingMore) return;
     if (numeroPagina > 1 && !temMaisPaginas) return;
 
@@ -67,10 +87,24 @@ const imageUri = user?.image
       if (numeroPagina === 1) setLoadingInitial(true);
       else setLoadingMore(true);
       
-      const response = await api.get(`/catalogo?page=${numeroPagina}&categoria_id=${catId}`);
+      let endpoint = `/catalogo?page=${numeroPagina}&categoria_id=${catId}&search=${encodeURIComponent(termoPesquisa)}`;
+      
+      if (temReservaAtiva) {
+        endpoint += `&start_date=${reserva.dataInicio}&end_date=${reserva.dataFim}`;
+      }
+
+      const response = await api.get(endpoint);
 
       if (response.data.status === 'success') {
         const novosDados = response.data.data;
+        
+        let itensQueChegaram = novosDados.itens;
+        let kitsQueChegaram = novosDados.kits || [];
+
+        if (temReservaAtiva) {
+          itensQueChegaram = itensQueChegaram.filter((item: any) => item.item_unities_count > 0);
+          kitsQueChegaram = kitsQueChegaram.filter((kit: any) => (kit.kit_unities_count || kit.item_unities_count) > 0);
+        }
         
         if (numeroPagina === 1 && novosDados.categorias) {
           setCategoriasDB([
@@ -81,37 +115,36 @@ const imageUri = user?.image
         }
         
         if (numeroPagina === 1) {
-          setDestaquesKits(novosDados.kits);
-          setEquipamentosItens(novosDados.itens);
+          setDestaquesKits(kitsQueChegaram);
+          setEquipamentosItens(itensQueChegaram);
         } else {
-          setEquipamentosItens(listaAntiga => [...listaAntiga, ...novosDados.itens]);
+          setEquipamentosItens(listaAntiga => [...listaAntiga, ...itensQueChegaram]);
         }
 
         setPaginaAtual(novosDados.paginacao.pagina_atual);
         setTemMaisPaginas(novosDados.paginacao.tem_mais);
       }
     } catch (error: any) {
-  console.log('Erro ao carregar catálogo:', error);
-  if (error.response?.status === 401) {
-    logout(); // Se o token expirou, manda para o login e para o loop
-  }
-} finally {
+      console.log('Erro ao carregar catálogo:', error);
+      if (error.response?.status === 401) {
+        logout(); 
+      }
+    } finally {
       setLoadingInitial(false);
       setLoadingMore(false);
     }
   };
 
-  
   const mudarCategoria = (idCategoria: string | number) => {
     setCategoriaAtiva(idCategoria);
     setTemMaisPaginas(true);
-    setEquipamentosItens([]); 
-    carregarCatalogo(1, idCategoria); 
+    // Não limpamos a lista abruptamente para evitar o piscar visual
+    carregarCatalogo(1, idCategoria, pesquisa); 
   };
 
   const aoChegarAoFimDaLista = () => {
     if (!loadingMore && temMaisPaginas) {
-      carregarCatalogo(paginaAtual + 1, categoriaAtiva);
+      carregarCatalogo(paginaAtual + 1, categoriaAtiva, pesquisa);
     }
   };
 
@@ -130,76 +163,11 @@ const imageUri = user?.image
     );
   };
 
-  if (loadingInitial && equipamentosItens.length === 0) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color="#1A237E" />
-      </View>
-    );
-  }
-
-  const renderHeader = () => (
-    <View style={{ paddingBottom: 15 }}>
-      <View style={styles.header}>
-        <View>
-          <Text style={styles.saudacao}>Olá</Text>
-          <Text style={styles.nomeUtilizador}>{userName}</Text> 
-        </View>
-        <TouchableOpacity 
-          style={styles.avatarContainer} 
-          onPress={() => router.push('/perfil')} 
-        >
-          {/* --- AVATAR DINÂMICO: IMAGEM VS INICIAIS --- */}
-          {imageUri ? (
-            <Image source={{ uri: imageUri }} style={styles.imageAvatar} />
-          ) : (
-            <Text style={styles.avatarText}>{userInitials}</Text>
-          )}
-        </TouchableOpacity>
-      </View>
-
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoriasContainer}>
-        {categoriasDB.map((cat) => (
-          <TouchableOpacity 
-            key={cat.id} 
-            style={[styles.categoriaBtn, categoriaAtiva === cat.id && styles.categoriaBtnAtiva]}
-            onPress={() => mudarCategoria(cat.id)}
-          >
-            <Text style={[styles.categoriaText, categoriaAtiva === cat.id && styles.categoriaTextAtiva]}>
-              {cat.description}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-
-      {destaquesKits.length > 0 && (
-        <>
-          <Text style={styles.sectionTitle}>EM DESTAQUE (KITS)</Text>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.destaquesContainer}>
-            {destaquesKits.map((kit) => (
-              <View key={kit.id} style={styles.cardDestaque}>
-                <View style={styles.imagemDestaqueMock} />
-                <Text style={styles.cardTitulo} numberOfLines={1}>{kit.name}</Text>
-                <Text style={styles.cardSubtitulo} numberOfLines={1}>{kit.description}</Text>
-                <BadgeDisponibilidade quantidade={kit.kit_unities_count} />
-              </View>
-            ))}
-          </ScrollView>
-        </>
-      )}
-
-      <Text style={styles.sectionTitle}>
-        {categoriaAtiva === 'Todos' ? 'TODOS OS EQUIPAMENTOS' : 
-         categoriaAtiva === 'Kits'  ? 'TODOS OS KITS' : 'EQUIPAMENTOS FILTRADOS'}
-      </Text>
-    </View>
-  );
-
   const renderFooter = () => {
     if (!loadingMore) return <View style={{ height: 40 }} />; 
     return (
       <View style={{ paddingVertical: 20 }}>
-        <ActivityIndicator size="small" color="#1A237E" />
+        <ActivityIndicator size="small" color="#065294" /> 
       </View>
     );
   };
@@ -211,171 +179,186 @@ const imageUri = user?.image
         keyExtractor={(item, index) => String(item.id) + index}
         contentContainerStyle={styles.container}
         showsVerticalScrollIndicator={false}
-        ListHeaderComponent={renderHeader}
+        
+        ListHeaderComponent={
+          <View style={{ paddingBottom: 15 }}>
+            <View style={styles.header}>
+              <View>
+                <Text style={styles.saudacao}>Olá</Text>
+                <Text style={styles.nomeUtilizador}>{userName}</Text> 
+              </View>
+              <TouchableOpacity 
+                style={styles.avatarContainer} 
+                onPress={() => router.push('/perfil')} 
+              >
+                {imageUri ? (
+                  <Image source={{ uri: imageUri }} style={styles.imageAvatar} />
+                ) : (
+                  <Text style={styles.avatarText}>{userInitials}</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+
+            {/* BARRA DE PESQUISA TOTALMENTE ESTÁVEL */}
+            <View style={styles.pesquisaContainer}>
+              <Ionicons name="search-outline" size={20} color="#9E9E9E" style={styles.pesquisaIcone} />
+              <TextInput
+                style={styles.pesquisaInput}
+                placeholder="Pesquisar equipamento ou modelo..."
+                placeholderTextColor="#9E9E9E"
+                value={pesquisa}
+                onChangeText={(texto) => setPesquisa(texto)}
+                returnKeyType="search"
+              />
+              {pesquisa.length > 0 && (
+                <TouchableOpacity onPress={() => setPesquisa('')}>
+                  <Ionicons name="close-circle" size={18} color="#B0BEC5" />
+                </TouchableOpacity>
+              )}
+            </View>
+
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.categoriasContainer}>
+              {categoriasDB.map((cat) => (
+                <TouchableOpacity 
+                  key={cat.id} 
+                  style={[styles.categoriaBtn, categoriaAtiva === cat.id && styles.categoriaBtnAtiva]}
+                  onPress={() => mudarCategoria(cat.id)}
+                >
+                  <Text style={[styles.categoriaText, categoriaAtiva === cat.id && styles.categoriaTextAtiva]}>
+                    {cat.description}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+
+            {/* Mostra um mini-loader discreto abaixo dos filtros se estiver a carregar a página 1 */}
+            {loadingInitial && (
+              <ActivityIndicator size="small" color="#065294" style={{ marginVertical: 15 }} />
+            )}
+
+            {destaquesKits.length > 0 && pesquisa.length === 0 && (
+              <>
+                <Text style={styles.sectionTitle}>EM DESTAQUE (KITS)</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.destaquesContainer} >
+                  {destaquesKits.map((kit) => (
+                    <TouchableHighlight 
+                      key={kit.id} 
+                      underlayColor="#F5F5F5" 
+                      style={{ borderRadius: 16 }} 
+                      onPress={() => router.push(`/detalhes/${kit.id}`)}
+                    >
+                      <View style={styles.cardDestaque}>
+                        {kit.image ? (
+                          <Image source={{ uri: obterUrlImagem(kit.image) }} style={styles.imagemDestaqueMock} />
+                        ) : (
+                          <View style={[styles.imagemDestaqueMock, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#F5F5F5' }]}>
+                            <Ionicons name="camera-outline" size={30} color="#B0BEC5" />
+                          </View>
+                        )}
+                        <Text style={styles.cardTitulo} numberOfLines={1}>{kit.nome || kit.name}</Text>
+                        <Text style={styles.cardSubtitulo} numberOfLines={1}>{kit.description || kit.model}</Text>
+                        <BadgeDisponibilidade quantidade={kit.kit_unities_count || kit.item_unities_count || 0} />
+                      </View>
+                    </TouchableHighlight>
+                  ))}
+                </ScrollView>
+              </>
+            )}
+
+            <Text style={styles.sectionTitle}>
+              {categoriaAtiva === 'Todos' ? 'TODOS OS EQUIPAMENTOS' : 
+              categoriaAtiva === 'Kits'  ? 'TODOS OS KITS' : String(categoriasDB.find(cat => cat.id === categoriaAtiva)?.description || 'EQUIPAMENTOS FILTRADOS').toUpperCase()}
+            </Text>
+          </View>
+        }
+       
         renderItem={({ item }) => (
-          <TouchableOpacity activeOpacity={0.8} onPress={() => router.push(`/detalhes/${item.id}`)}>
+          <TouchableHighlight 
+            underlayColor="#F5F5F5"
+            style={{ borderRadius: 16, marginHorizontal: 20, marginBottom: 12 }} 
+            onPress={() => router.push(`/detalhes/${item.id}`)}
+          >
             <View style={styles.cardLista}>
-              <View style={styles.imagemListaMock} />
+              {item.image ? (
+                <Image source={{ uri: obterUrlImagem(item.image) }} style={styles.imagemListaMock} />
+              ) : (
+                <View style={[styles.imagemListaMock, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#F5F5F5' }]}>
+                   <Ionicons name="camera-outline" size={24} color="#B0BEC5" />
+                </View>
+              )}
+
               <View style={styles.listaTextoInfo}>
                 <Text style={styles.cardTitulo} numberOfLines={1}>{item.nome}</Text>
                 <Text style={styles.cardSubtitulo} numberOfLines={1}>{item.model}</Text>
               </View>
-              <BadgeDisponibilidade quantidade={item.item_unities_count} />
+              <BadgeDisponibilidade quantidade={item.item_unities_count || 0} />
             </View>
-          </TouchableOpacity>
+          </TouchableHighlight>
         )}
         onEndReached={aoChegarAoFimDaLista}
         onEndReachedThreshold={0.1} 
         ListFooterComponent={renderFooter}
         ListEmptyComponent={
-        !loadingInitial ? (
-          <Text style={{ textAlign: 'center', color: '#9E9E9E', marginTop: 20 }}>
-            Nenhum equipamento encontrado nesta categoria.
-          </Text>
-        ) : null // <-- Se estiver a carregar, passa null em vez de false
-      }
+          !loadingInitial ? (
+            <Text style={{ textAlign: 'center', color: '#9E9E9E', marginTop: 20, paddingHorizontal: 20 }}>
+              Nenhum equipamento encontrado com os filtros atuais.
+            </Text>
+          ) : null
+        }
       />
     </SafeAreaView>
   );
 }
-
-
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#F8F9FA',
-  },
-  container: {
-    padding: 20,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-    marginTop: 10,
-  },
-  saudacao: {
-    color: '#00BFA5', 
-    fontWeight: 'bold',
-    fontSize: 12,
-    marginBottom: 2,
-  },
-  nomeUtilizador: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#1A237E',
-  },
-  avatarContainer: {
-    width: 45,
-    height: 45,
-    borderRadius: 25,
-    backgroundColor: '#1A237E',
-    justifyContent: 'center',
-    alignItems: 'center',
-    overflow: 'hidden'
-  },
-  imageAvatar: { 
-    width: 45, 
-    height: 45, 
-    borderRadius: 22.5
-  },
-  avatarText: {
-    color: '#FFF',
-    fontWeight: 'bold',
-    fontSize: 16,
-  },
-  categoriasContainer: {
-    flexDirection: 'row',
-    marginBottom: 30,
-  },
-  categoriaBtn: {
-    paddingVertical: 8,
-    paddingHorizontal: 20,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
-    backgroundColor: '#FFF',
-    marginRight: 10,
-    height: 40,
-    justifyContent: 'center',
-  },
-  categoriaBtnAtiva: {
-    backgroundColor: '#1A237E',
-    borderColor: '#1A237E',
-  },
-  categoriaText: {
-    color: '#757575',
-    fontWeight: '600',
-  },
-  categoriaTextAtiva: {
-    color: '#FFF',
-  },
-  sectionTitle: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: '#546E7A',
-    marginBottom: 15,
-  },
-  destaquesContainer: {
-    marginBottom: 30,
-  },
-  cardDestaque: {
-    width: 160,
-    backgroundColor: '#FFF',
-    borderRadius: 16,
-    padding: 15,
-    marginRight: 15,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  // ATENÇÃO: Ajustámos o cardLista para ele próprio ter o fundo branco
-  cardLista: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 15,
-    paddingHorizontal: 15,
-    backgroundColor: '#FFF',
-    borderRadius: 16,
-    marginBottom: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  imagemListaMock: {
-    width: 50,
-    height: 50,
-    backgroundColor: '#E8F5E9', 
-    borderRadius: 10,
-    marginRight: 15,
-  },
-  listaTextoInfo: {
-    flex: 1,
-  },
-  cardTitulo: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#212121',
-    marginBottom: 2,
-  },
-  cardSubtitulo: {
-    fontSize: 12,
-    color: '#9E9E9E',
-    marginBottom: 8,
-  },
-  badge: {
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    alignSelf: 'flex-start',
-  },
-  badgeText: {
-    fontSize: 11,
-    fontWeight: 'bold',
-  },
+  safeArea: { flex: 1, backgroundColor: '#f4f7fc' },
+  container: { paddingBottom: 100 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 10 },
+  saudacao: { fontSize: 12, color: '#9E9E9E', fontWeight: 'bold' },
+  nomeUtilizador: { fontSize: 20, fontWeight: 'bold', color: '#212121' },
+  avatarContainer: { width: 45, height: 45, borderRadius: 22.5, backgroundColor: '#065294', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' }, 
+  imageAvatar: { width: 45, height: 45, borderRadius: 22.5 }, 
+  avatarText: { color: '#FFF', fontWeight: 'bold', fontSize: 16 },
+  categoriasContainer: { paddingHorizontal: 20, marginTop: 20, marginBottom: 10 },
+  categoriaBtn: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: '#ffffff', marginRight: 10, borderWidth: 1, borderColor: '#EEEEEE' },
+  categoriaBtnAtiva: { backgroundColor: '#065294', borderColor: '#065294' },
+  categoriaText: { color: '#757575', fontWeight: '600', fontSize: 13 },
+  categoriaTextAtiva: { color: '#FFF' },
+  sectionTitle: { fontSize: 14, fontWeight: 'bold', color: '#9E9E9E', marginHorizontal: 20, marginTop: 20, marginBottom: 15, letterSpacing: 0.5 },
+  destaquesContainer: { paddingLeft: 20 },
+  cardDestaque: { width: 160, backgroundColor: '#FFF', borderRadius: 16, padding: 12, marginRight: 15, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 3, marginBottom: 10 },
+  
+  /* CORREÇÃO: imagemDestaqueMock adicionada aos estilos! */
+  imagemDestaqueMock: { width: '100%', height: 100, backgroundColor: '#E8EAF6', borderRadius: 10, marginBottom: 12 },
+  
+  cardTitulo: { fontSize: 15, fontWeight: 'bold', color: '#212121', marginBottom: 4 },
+  cardSubtitulo: { fontSize: 12, color: '#757575', marginBottom: 10 },
+  cardLista: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', marginHorizontal: 0, marginBottom: 0, padding: 12, borderRadius: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 },
+  imagemListaMock: { width: 60, height: 60, backgroundColor: '#E8EAF6', borderRadius: 10, marginRight: 15 },
+  listaTextoInfo: { flex: 1, justifyContent: 'center' },
+  badge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, alignSelf: 'flex-start' },
+  badgeText: { fontSize: 11, fontWeight: 'bold' },
+  pesquisaContainer: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  backgroundColor: '#FFF',
+  marginHorizontal: 20,
+  marginTop: 15,
+  paddingHorizontal: 15,
+  height: 48,
+  borderRadius: 12,
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 2 },
+  shadowOpacity: 0.04,
+  shadowRadius: 6,
+  elevation: 2,
+},
+pesquisaIcone: {
+  marginRight: 10,
+},
+pesquisaInput: {
+  flex: 1,
+  fontSize: 14,
+  color: '#212121',
+  height: '100%',
+},
 });

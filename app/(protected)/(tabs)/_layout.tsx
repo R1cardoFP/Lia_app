@@ -9,10 +9,16 @@ export default function TabLayout() {
   return (
     <Tabs
       screenOptions={{
-        tabBarActiveTintColor: '#1A237E', 
+        tabBarActiveTintColor: '#065294', 
         tabBarInactiveTintColor: '#B0BEC5', 
         headerShown: false, 
+        tabBarBackground: () => null, 
         tabBarStyle: {
+          position: 'absolute', 
+          backgroundColor: '#FFF', 
+          bottom: 0,
+          left: 0,
+          right: 0,
           borderTopWidth: 0,
           elevation: 10, 
           shadowOpacity: 0.1, 
@@ -20,10 +26,6 @@ export default function TabLayout() {
           paddingBottom: Math.max(insets.bottom, 10), 
           paddingTop: 10
         },
-        tabBarLabelStyle: {
-          fontWeight: '600',
-          fontSize: 11,
-        }
       }}
     >
       <Tabs.Screen
@@ -32,6 +34,16 @@ export default function TabLayout() {
           title: 'Catálogo',
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="grid-outline" size={size} color={color} />
+          ),
+        }}
+      />
+
+      <Tabs.Screen
+        name="fazer-reserva"
+        options={{
+          title: 'Reservar',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="calendar-outline" size={size} color={color} />
           ),
         }}
       />

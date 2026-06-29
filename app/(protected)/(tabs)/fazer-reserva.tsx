@@ -1,10 +1,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { useRouter } from 'expo-router';
 import { default as React, useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Modal, ScrollView, StatusBar, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Calendar, LocaleConfig } from 'react-native-calendars';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useReserva } from '../../../contexts/reservaContext';
 import api from '../../../services/api';
 
@@ -50,6 +51,9 @@ export default function FazerReserva() {
   const [modalDiaCiclico, setModalDiaCiclico] = useState(false);
 
   const [submitting, setSubmitting] = useState(false);
+
+  const insets = useSafeAreaInsets();
+  const tabBarHeight = useBottomTabBarHeight();
 
   useEffect(() => {
     carregarCentrosDeCusto();
@@ -397,7 +401,7 @@ export default function FazerReserva() {
       />
 
       {reserva.itens.length > 0 && (
-        <View style={styles.footerFixo}>
+         <View style={[styles.footerFixo, { bottom: tabBarHeight }]}>
           <TouchableOpacity 
             style={[styles.btnConfirmarFinal, submitting && { opacity: 0.7 }]} 
             onPress={handleConfirmarReservaFinal}

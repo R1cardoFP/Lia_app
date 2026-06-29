@@ -68,6 +68,18 @@ export default function TabLayout() {
           ),
         }}
       />
+
+       <Tabs.Screen
+        name="disponibilidade"
+        options={{
+          title: 'Disponib.',
+          tabBarIcon: ({ color, size }) => (
+            <Ionicons name="time-outline" size={size} color={color} />
+          ),
+        }}
+      />
     </Tabs>
+
+    
   );
 }

@@ -32,6 +32,7 @@ type DetalheReserva = {
   end_date: string;
   cost: number | string;
   is_paid: number;
+  ciclica_id?: number | null;
   itens: ItemReservado[];
   kits: KitReservado[];
 };
@@ -138,6 +139,21 @@ export default function DetalheReservaPage() {
     return `${pad(s.getDate())}/${pad(s.getMonth() + 1)}/${s.getFullYear()} até ${pad(e.getDate())}/${pad(e.getMonth() + 1)}/${e.getFullYear()}`;
   };
 
+  const obterDiaCiclico = (ciclicaId?: number | null): string | null => {
+    // 1 (ou null) = não cíclica. 2=Domingo ... 8=Sábado
+    if (!ciclicaId || ciclicaId === 1) return null;
+    const dias: Record<number, string> = {
+      2: 'Domingos',
+      3: 'Segundas-feiras',
+      4: 'Terças-feiras',
+      5: 'Quartas-feiras',
+      6: 'Quintas-feiras',
+      7: 'Sextas-feiras',
+      8: 'Sábados',
+    };
+    return dias[ciclicaId] || null;
+  };
+
   if (loading) {
     return (
       <View style={styles.containerLoading}>
@@ -198,6 +214,15 @@ export default function DetalheReservaPage() {
             <Text style={styles.textoDataReal}>
               {formatarDataCompleta(reserva.start_date, reserva.end_date)}
             </Text>
+
+               {obterDiaCiclico(reserva.ciclica_id) && (
+              <View style={styles.ciclicaBadge}>
+                <Ionicons name="repeat" size={15} color="#065294" />
+                <Text style={styles.ciclicaTexto}>
+                  Reserva cíclica · Todas as {obterDiaCiclico(reserva.ciclica_id)}
+                </Text>
+              </View>
+            )}
 
             <View style={styles.motivoContainer}>
               <Text style={styles.labelSecundario}>MOTIVO / JUSTIFICAÇÃO</Text>
@@ -336,5 +361,17 @@ const styles = StyleSheet.create({
   badgeQtd: { backgroundColor: '#f4f7fc', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: '#eaf0f8' },
   badgeQtdText: { color: '#065294', fontWeight: 'bold', fontSize: 14 },
   botaoCancelar: { backgroundColor: '#FFEBEE', borderWidth: 1, borderColor: '#ffcdd2', borderRadius: 12, paddingVertical: 14, marginHorizontal: 20, marginTop: 10, alignItems: 'center' },
-  textoBotaoCancelar: { color: '#c62828', fontSize: 15, fontWeight: 'bold' }
+  textoBotaoCancelar: { color: '#c62828', fontSize: 15, fontWeight: 'bold' },
+  ciclicaBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    gap: 6,
+    backgroundColor: '#eaf0f8',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    marginTop: 10,
+  },
+  ciclicaTexto: { fontSize: 12.5, fontWeight: '600', color: '#065294' },
 });

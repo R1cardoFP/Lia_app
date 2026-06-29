@@ -36,6 +36,8 @@ type DetalheReserva = {
   kits: KitReservado[];
 };
 
+
+
 export default function DetalheReservaPage() {
   const router = useRouter();
   const { id } = useLocalSearchParams(); 

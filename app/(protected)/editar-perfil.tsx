@@ -12,8 +12,10 @@ interface InputGroupProps {
   label: string;
   value: string;
   onChangeText: (text: string) => void;
+  iconName: keyof typeof Ionicons.glyphMap;
   keyboardType?: KeyboardTypeOptions;
   editable?: boolean;
+  placeholder?: string;
 }
 
 const TIPOS_UTILIZADOR = [
@@ -25,10 +27,23 @@ const TIPOS_UTILIZADOR = [
   { id: 6, label: 'Visitante' },
 ];
 
-const InputGroup = ({ label, value, onChangeText, keyboardType = 'default', editable = true }: InputGroupProps) => (
-  <View style={styles.inputContainer}>
+
+
+const InputGroup = ({ label, value, onChangeText, iconName, keyboardType = 'default', editable = true, placeholder }: InputGroupProps) => (
+  <View style={styles.inputGroupContainer}>
     <Text style={styles.label}>{label}</Text>
-    <TextInput style={[styles.input, !editable && styles.inputDisabled]} value={value} onChangeText={onChangeText} keyboardType={keyboardType} editable={editable} placeholderTextColor="#9E9E9E" />
+    <View style={styles.inputWrapper}>
+      <Ionicons name={iconName} size={15} color="#b0bfcc" style={styles.inputIcon} />
+      <TextInput 
+        style={[styles.inp, !editable && styles.inputDisabled]} 
+        value={value} 
+        onChangeText={onChangeText} 
+        keyboardType={keyboardType} 
+        editable={editable} 
+        placeholder={placeholder}
+        placeholderTextColor="#b0bfcc" 
+      />
+    </View>
   </View>
 );
 
@@ -41,6 +56,25 @@ export default function EditarPerfil() {
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [guardando, setGuardando] = useState(false);
+
+
+  const InputGroup = ({ label, value, onChangeText, iconName, keyboardType = 'default', editable = true, placeholder }: InputGroupProps) => (
+  <View style={styles.inputGroupContainer}>
+    <Text style={styles.label}>{label}</Text>
+    <View style={styles.inputWrapper}>
+      <Ionicons name={iconName} size={15} color="#b0bfcc" style={styles.inputIcon} />
+      <TextInput 
+        style={[styles.inp, !editable && styles.inputDisabled]} 
+        value={value} 
+        onChangeText={onChangeText} 
+        keyboardType={keyboardType} 
+        editable={editable} 
+        placeholder={placeholder}
+        placeholderTextColor="#b0bfcc" 
+      />
+    </View>
+  </View>
+);
 
   useFocusEffect(
   useCallback(() => { carregarDados(); }, [user]) // <-- Adicionado o user aqui
@@ -155,12 +189,21 @@ export default function EditarPerfil() {
     <SafeAreaView style={styles.safeArea}>
       <Stack.Screen options={{ headerShown: false }} />
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={{ flex: 1 }}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}><Ionicons name="arrow-back" size={24} color="#212121" /></TouchableOpacity>
-          <Text style={styles.headerTitle}>Editar Perfil</Text>
-          <View style={{ width: 24 }} /> 
-        </View>
+       <View style={styles.header}>
+  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+    <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+      <Ionicons name="arrow-back" size={24} color="#0d1f30" />
+    </TouchableOpacity>
+    <View>
+      <Text style={styles.headerTitle}>Editar Perfil</Text>
+      <Text style={styles.headerSubtitle}>Altera dados da tua conta</Text>
+    </View>
+  </View>
+</View>
 
+
+
+        <View style={styles.corpoConteudo}>
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
           <View style={styles.fotoContainer}>
             <TouchableOpacity onPress={escolherImagem} activeOpacity={0.8}>
@@ -171,44 +214,118 @@ export default function EditarPerfil() {
             <TouchableOpacity style={styles.changePhotoButton} onPress={escolherImagem}><Ionicons name="camera" size={20} color="#FFF" /></TouchableOpacity>
           </View>
 
-          <View style={styles.formContainer}>
-            <InputGroup label="Nome Completo" value={nome} onChangeText={setNome} />
-            <InputGroup label="Telemóvel" value={telemovel} onChangeText={setTelemovel} keyboardType="phone-pad" />
-
-
-            <InputGroup label="Curso" value={curso} onChangeText={setCurso} />
-            <InputGroup label="Número" value={numero} onChangeText={setNumero} keyboardType="numeric" />
+          <View style={styles.containerFormulario}>
+            <View style={styles.formContainer}>
+            <InputGroup label="Nome Completo" value={nome} onChangeText={setNome} iconName="person-outline" placeholder="Ex: João Silva" />
+            <InputGroup label="Telemóvel" value={telemovel} onChangeText={setTelemovel} iconName="call-outline" keyboardType="phone-pad" placeholder="Ex: 912345678" />
+            <InputGroup label="Curso" value={curso} onChangeText={setCurso} iconName="school-outline" placeholder="Ex: Engenharia Informática" />
+            <InputGroup label="Número de Aluno" value={numero} onChangeText={setNumero} iconName="id-card-outline" keyboardType="numeric" placeholder="Ex: 12345" />
+          </View>
           </View>
         </ScrollView>
 
         <View style={styles.footer}>
-          <TouchableOpacity style={styles.saveButton} onPress={guardarAlteracoes} disabled={guardando}>
-            {guardando ? <ActivityIndicator color="#FFF" /> : <Text style={styles.saveButtonText}>Guardar Alterações</Text>}
+          <TouchableOpacity style={styles.btnIniciar} onPress={guardarAlteracoes} disabled={guardando}>
+            {guardando ? <ActivityIndicator color="#FFF" /> : <Text style={styles.btnIniciarText}>Guardar Alterações</Text>}
           </TouchableOpacity>
         </View>
+         </View>
       </KeyboardAvoidingView>
-
+   
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#F8F9FA' },
+
+  // Fundo principal agora é branco puro no topo
+  safeArea: { flex: 1, backgroundColor: '#ffffff' },
+
+  // Header atualizado com padding e cores do DetalheReserva
+  header: { backgroundColor: '#fff', paddingHorizontal: 20, paddingTop: 20, paddingBottom: 13 },
+  headerTitle: { fontSize: 22, fontWeight: '800', color: '#0d1f30' },
+  headerSubtitle: { fontSize: 12, color: '#7a94aa', marginTop: 2 },
+  backButton: { marginRight: 4, justifyContent: 'center', alignItems: 'center' },
+
+  // Novo container de fundo para o scroll
+  corpoConteudo: { flex: 1, backgroundColor: '#f4f7fc' },
+
+  // Cor do loader alterada para o azul escuro padrão
+  containerLoading: { flex: 1, backgroundColor: '#f4f7fc', justifyContent: 'center', alignItems: 'center', padding: 20 },
+  containerFormulario: { flexDirection: 'column', gap: 14 },
+  inputGroupContainer: { marginBottom: 4 },
+
+  // ESTILOS EXATOS COPIADOS DA PÁGINA DE RESERVA
+  label: { 
+    fontSize: 12, 
+    fontWeight: '600', 
+    color: '#9E9E9E',
+    marginBottom: 4, 
+    letterSpacing: 0.5, 
+    textTransform: 'uppercase', 
+  }, 
+  inputWrapper: { 
+    position: 'relative', 
+    justifyContent: 'center', 
+  }, 
+  inputIcon: { 
+    position: 'absolute', 
+    left: 12, 
+    zIndex: 1, 
+  }, 
+  inp: { 
+    backgroundColor: '#fff', 
+    borderWidth: 1, 
+    borderColor: '#e2e8f0', 
+    borderRadius: 8, 
+    paddingLeft: 38, 
+    paddingRight: 12, 
+    fontSize: 14, 
+    height: 46,
+    color: '#333', 
+  }, 
+  inputDisabled: { 
+    backgroundColor: '#ECEFF1', 
+    color: '#9E9E9E' 
+  },
+  // Cor do Avatar grande alterada para o azul correspondente
+  avatarBig: { width: 100, height: 100, borderRadius: 50, backgroundColor: '#065294', justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 4, overflow: 'hidden' },
+
+  // Bordas do botão de câmara ajustadas ao novo fundo cinza
+  changePhotoButton: { position: 'absolute', bottom: 0, right: '35%', backgroundColor: '#00BFA5', width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center', borderWidth: 3, borderColor: '#f4f7fc', zIndex: 10, elevation: 10 },
+
+  // Labels dos inputs agora usam o mesmo tom cinza-azulado (#8a9fb4) e tamanho do outro ecrã
+  
+
+  btnIniciar: { 
+    backgroundColor: '#065294',   // Mantém a tua cor azul original
+    borderRadius: 8,              // Arredondamento igual ao do registo
+    paddingVertical: 15,          // Altura baseada em padding igual ao do registo
+    flexDirection: 'row',
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    marginTop: 15, 
+  }, 
+  btnIniciarText: { 
+    color: '#FFF', 
+    fontSize: 15,                 // Tamanho da fonte igual ao do registo
+    fontWeight: '700',            // Peso da fonte igual ao do registo
+  },
+  
+  
   scrollContent: { padding: 20, paddingBottom: 40 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingVertical: 15, backgroundColor: '#FFF', borderBottomWidth: 1, borderBottomColor: '#F0F0F0' },
-  backButton: { padding: 5, marginLeft: -5 },
-  headerTitle: { fontSize: 18, fontWeight: 'bold', color: '#212121' },
-  fotoContainer: { alignItems: 'center', marginTop: 20, marginBottom: 30 },
-  avatarBig: { width: 100, height: 100, borderRadius: 50, backgroundColor: '#005596', justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 8, elevation: 4, overflow: 'hidden' },
+  
+  fotoContainer: { alignItems: 'center', marginTop: 20, marginBottom: 45 },
+  
   imageAvatar: { width: 100, height: 100, borderRadius: 50 },
   avatarTextBig: { fontSize: 36, fontWeight: 'bold', color: '#FFF' },
-  changePhotoButton: { position: 'absolute', bottom: 0, right: '35%', backgroundColor: '#00BFA5', width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center', borderWidth: 3, borderColor: '#F8F9FA',zIndex: 10, elevation: 10 },
-  formContainer: { backgroundColor: '#FFF', borderRadius: 16, padding: 20, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 },
+
+
+  
+  formContainer: { backgroundColor: '#FFF', borderRadius: 16, padding: 20, gap: 14, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 },
   inputContainer: { marginBottom: 20 },
-  label: { fontSize: 13, fontWeight: 'bold', color: '#546E7A', marginBottom: 8, textTransform: 'uppercase' },
+  
   input: { backgroundColor: '#F5F7F9', borderWidth: 1, borderColor: '#E0E6ED', borderRadius: 12, paddingHorizontal: 15, height: 50, fontSize: 16, color: '#212121' },
-  inputDisabled: { backgroundColor: '#ECEFF1', color: '#9E9E9E' },
-  footer: { padding: 20, backgroundColor: '#FFF', borderTopWidth: 1, borderTopColor: '#F0F0F0' },
-  saveButton: { backgroundColor: '#005596', height: 55, borderRadius: 12, justifyContent: 'center', alignItems: 'center', shadowColor: '#005596', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 4 },
-  saveButtonText: { color: '#FFF', fontSize: 16, fontWeight: 'bold' },
+  footer: { padding: 20, backgroundColor: '#f4f7fc'},
+
 });

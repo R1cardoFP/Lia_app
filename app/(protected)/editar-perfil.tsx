@@ -3,7 +3,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { router, Stack, useFocusEffect } from 'expo-router';
 import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, KeyboardTypeOptions, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, KeyboardAvoidingView, KeyboardTypeOptions, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import api, { API_URL } from '../../services/api';
 
@@ -39,11 +39,8 @@ export default function EditarPerfil() {
   const [curso, setCurso] = useState('');
   const [numero, setNumero] = useState('');
   const [imageUri, setImageUri] = useState<string | null>(null);
-  const [tipoSelecionado, setTipoSelecionado] = useState(TIPOS_UTILIZADOR[3]); // Default: Requisitante
   const [loading, setLoading] = useState(true);
   const [guardando, setGuardando] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [modalVisivel, setModalVisivel] = useState(false);
 
   useFocusEffect(
   useCallback(() => { carregarDados(); }, [user]) // <-- Adicionado o user aqui
@@ -60,16 +57,6 @@ export default function EditarPerfil() {
       setCurso(user.curso || '');
       setNumero(user.n_aluno?.toString() || ''); 
       
-      // 2. LER O user_type_id
-      const tipoUserDb = TIPOS_UTILIZADOR.find(t => t.id === user.user_type_id);
-      if (tipoUserDb) setTipoSelecionado(tipoUserDb);
-
-      // Se for Gestor (1) ou Técnico (2), desbloqueia o botão (fica true)
-      if (user.user_type_id === 1 || user.user_type_id === 2) {
-        setIsAdmin(true);
-      } else {
-        setIsAdmin(false);
-      }
 
       if (user.image) {
        
@@ -102,16 +89,36 @@ export default function EditarPerfil() {
   };
 
   const guardarAlteracoes = async () => {
+
+      const telemovelLimpo = telemovel.trim();
+      const apenasNumeros = /^[0-9]+$/;
+
+    if (telemovelLimpo.length !== 9 || !apenasNumeros.test(telemovelLimpo)) {
+    Alert.alert(
+      'Aviso', 
+      'O número de telemóvel deve conter exatamente 9 dígitos.',
+      [
+        {
+          text: 'OK',
+          onPress: () => {
+            // >>> ALTERAÇÃO AQUI: Quando clica em OK, repõe o número antigo ou limpa (vazio)
+            setTelemovel(user?.phone?.toString() || '');
+          }
+        }
+      ]
+    );
+    return; 
+  }
     setGuardando(true);
     try {
-      
+
       const formData = new FormData();
       formData.append('name', nome);
-      formData.append('phone', telemovel);
+      formData.append('phone', telemovelLimpo);
       formData.append('curso', curso);
       formData.append('n_aluno', numero);
-      // 3. ENVIAR O user_type_id
-      formData.append('user_type_id', tipoSelecionado.id.toString());
+    
+      
 
       if (imageUri && !imageUri.startsWith('http')) {
         const uriPartes = imageUri.split('/');
@@ -168,29 +175,6 @@ export default function EditarPerfil() {
             <InputGroup label="Nome Completo" value={nome} onChangeText={setNome} />
             <InputGroup label="Telemóvel" value={telemovel} onChangeText={setTelemovel} keyboardType="phone-pad" />
 
-            <View style={styles.inputContainer}>
-              <Text style={styles.label}>Tipo de Utilizador</Text>
-              
-              {/* --- LÓGICA DE UI DINÂMICA: SELETOR VS TEXTO --- */}
-              {isAdmin ? (
-                // Se for Admin, mostra o seletor interativo
-                <TouchableOpacity 
-                  style={[styles.input, { justifyContent: 'center' }]} 
-                  onPress={() => setModalVisivel(true)} 
-                  activeOpacity={0.7}
-                >
-                  <Text style={{ color: '#212121', fontSize: 16 }}>
-                    {tipoSelecionado.label}
-                  </Text>
-                  <Ionicons name="chevron-down" size={20} color="#757575" style={{ position: 'absolute', right: 15 }} />
-                </TouchableOpacity>
-              ) : (
-                // Se não for Admin, mostra apenas o texto estático styled como input
-                <Text style={[styles.input, styles.inputDisabled, { justifyContent: 'center', textAlignVertical: 'center' }]}>
-                  {tipoSelecionado.label}
-                </Text>
-              )}
-            </View>
 
             <InputGroup label="Curso" value={curso} onChangeText={setCurso} />
             <InputGroup label="Número" value={numero} onChangeText={setNumero} keyboardType="numeric" />
@@ -204,21 +188,6 @@ export default function EditarPerfil() {
         </View>
       </KeyboardAvoidingView>
 
-      {/* O Modal continua aqui para quando o Admin está a editar */}
-      <Modal visible={modalVisivel} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>Selecionar Tipo</Text>
-            {TIPOS_UTILIZADOR.map((tipo) => (
-              <TouchableOpacity key={tipo.id} style={styles.modalOpcao} onPress={() => { setTipoSelecionado(tipo); setModalVisivel(false); }}>
-                <Text style={[styles.modalOpcaoText, tipoSelecionado.id === tipo.id && styles.modalOpcaoAtiva]}>{tipo.label}</Text>
-                {tipoSelecionado.id === tipo.id && <Ionicons name="checkmark" size={20} color="#005596" />}
-              </TouchableOpacity>
-            ))}
-            <TouchableOpacity style={styles.modalCancelar} onPress={() => setModalVisivel(false)}><Text style={styles.modalCancelarText}>Cancelar</Text></TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
     </SafeAreaView>
   );
 }
@@ -242,12 +211,4 @@ const styles = StyleSheet.create({
   footer: { padding: 20, backgroundColor: '#FFF', borderTopWidth: 1, borderTopColor: '#F0F0F0' },
   saveButton: { backgroundColor: '#005596', height: 55, borderRadius: 12, justifyContent: 'center', alignItems: 'center', shadowColor: '#005596', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.2, shadowRadius: 8, elevation: 4 },
   saveButtonText: { color: '#FFF', fontSize: 16, fontWeight: 'bold' },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.4)', justifyContent: 'center', alignItems: 'center', padding: 20 },
-  modalContent: { backgroundColor: '#FFF', borderRadius: 16, padding: 20, width: '100%', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 10, elevation: 5 },
-  modalTitle: { fontSize: 18, fontWeight: 'bold', color: '#212121', marginBottom: 15, textAlign: 'center' },
-  modalOpcao: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: '#F0F0F0' },
-  modalOpcaoText: { fontSize: 16, color: '#546E7A' },
-  modalOpcaoAtiva: { color: '#005596', fontWeight: 'bold' },
-  modalCancelar: { marginTop: 15, paddingVertical: 15, alignItems: 'center' },
-  modalCancelarText: { fontSize: 16, fontWeight: 'bold', color: '#E53935' }
 });

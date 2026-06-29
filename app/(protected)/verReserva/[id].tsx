@@ -84,7 +84,7 @@ export default function DetalheReservaPage() {
           { 
             text: "OK", 
             onPress: () => {
-              router.replace('/(tabs)/reservas');
+              router.replace('(tabs)/reservas');
             } 
           }
         ]);

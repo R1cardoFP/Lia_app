@@ -96,6 +96,17 @@ export default function FazerReserva() {
     router.push('/catalogo');
   };
 
+  const handleCancelarReserva = () => {
+    Alert.alert(
+      "Cancelar Reserva",
+      "Tens a certeza que queres cancelar? Todos os dados e itens escolhidos serão limpos.",
+      [
+        { text: "Não", style: "cancel" },
+        { text: "Sim, Cancelar", style: "destructive", onPress: limparReserva }
+      ]
+    );
+  };
+
   const handleConfirmarReservaFinal = async () => {
     if (reserva.itens.length === 0) {
       Alert.alert('Carrinho Vazio', 'Tens de adicionar pelo menos um equipamento do catálogo.');
@@ -351,30 +362,49 @@ export default function FazerReserva() {
   // ========================================================
   return (
     <SafeAreaView style={styles.safeArea}>
-      <View style={styles.headerCarrinho}>
+     <View style={styles.headerCarrinho}>
         <View style={{ flex: 1, marginRight: 10 }}>
           <Text style={styles.tituloPrincipal}>A tua Reserva</Text>
-          <Text style={styles.subtituloResumo} numberOfLines={1}>Período: {reserva.dataInicio} a {reserva.dataFim}</Text>
+          <Text style={[styles.subtituloPrincipal, { color: '#00a385' }]} numberOfLines={1}>
+            Período: {reserva.dataInicio} a {reserva.dataFim}
+          </Text>
         </View>
-        <TouchableOpacity style={styles.btnLimparTudo} onPress={limparReserva}>
+       <TouchableOpacity style={styles.btnLimparTudo} onPress={handleCancelarReserva}>
           <Text style={styles.btnLimparTudoText}>Cancelar</Text>
         </TouchableOpacity>
       </View>
-
+      <View style={styles.corpoFormulario}>
       <FlatList
         data={reserva.itens}
         keyExtractor={(item, index) => String(item.id) + (item.is_kit ? '-kit' : '-item') + index}
         contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 100 }}
-        ListHeaderComponent={() => (
-          <View style={styles.cardInfosFixas}>
-            <Text style={styles.infoFixaTexto}><Text style={{ fontWeight: 'bold' }}>Motivo:</Text> {reserva.motivo}</Text>
-            {reserva.isCiclica && reserva.diaCiclico !== null && (
-              <Text style={styles.infoFixaTexto}>
-                <Text style={{ fontWeight: 'bold' }}>Repetição:</Text> Todas as {DIAS_DA_SEMANA.find(d => d.id === reserva.diaCiclico)?.label}s
+       ListHeaderComponent={() => (
+        <View style={styles.cardInfoPrincipal}>
+          {/* Esta parte do Motivo aparece sempre */}
+          <Text style={styles.tituloDataTitle}>Motivo/Justificação</Text>
+          <Text style={styles.textoMotivo}>{reserva.motivo}</Text>
+          
+          {/* Esta parte da Repetição SÓ aparece se for cíclica */}
+          {reserva.isCiclica && reserva.diaCiclico !== null && (
+            <View style={styles.motivoContainer}>
+              <Text style={styles.labelSecundario}>REPETIÇÃO</Text> 
+              <Text style={[styles.motivoTexto, { marginTop: 4 }]}>
+                Todas as {DIAS_DA_SEMANA.find(d => d.id === reserva.diaCiclico)?.label}s
               </Text>
-            )}
-          </View>
-        )}
+            </View>
+          )}
+        </View>
+      )}
+
+
+
+
+
+
+
+
+
+
         ListEmptyComponent={() => (
           <View style={styles.carrinhoVazioContainer}>
             <Ionicons name="cart-outline" size={50} color="#B0BEC5" />
@@ -397,6 +427,7 @@ export default function FazerReserva() {
               </TouchableOpacity>
             </View>
           </View>
+        
         )}
       />
 
@@ -418,7 +449,9 @@ export default function FazerReserva() {
           </TouchableOpacity>
         </View>
       )}
+       </View>
     </SafeAreaView>
+
   );
 }
 
@@ -460,7 +493,8 @@ safeArea: {
   subtituloPrincipal: { 
     fontSize: 12,          
     color: '#7a94aa',      
-    marginTop: 2 
+    marginTop: 2 ,
+    fontWeight: '600'
   },
   
 
@@ -529,6 +563,11 @@ safeArea: {
     fontSize: 15, 
     fontWeight: '700', 
   },
+  labelSecundario: { fontSize: 11, fontWeight: '700', color: '#8a9fb4', letterSpacing: 0.5 },
+  tituloDataTitle: { fontSize: 18, fontWeight: '800', color: '#212121' },
+   motivoContainer: { marginTop: 15, paddingTop: 15, borderTopWidth: 1, borderTopColor: '#e2e8f0' },
+  motivoTexto: { fontSize: 14, color: '#212121', marginTop: 6, lineHeight: 20 },
+  textoMotivo: { fontSize: 13, color: '#5a7a9a', fontWeight: '500', marginTop: 4 },
   rowDatas: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 },
   inputGroup: { marginBottom: 18 },
 
@@ -544,7 +583,7 @@ safeArea: {
   btnIniciar: { 
     backgroundColor: '#065294',   // Mantém a tua cor azul original
     borderRadius: 8,              // Arredondamento igual ao do registo
-    paddingVertical: 15,          // Altura baseada em padding igual ao do registo
+    paddingVertical: 15,          // Altura baseada em padding igual ao do registo 
     flexDirection: 'row',
     alignItems: 'center', 
     justifyContent: 'center', 
@@ -556,6 +595,19 @@ safeArea: {
     fontWeight: '700',            // Peso da fonte igual ao do registo
   },
   
+  cardInfoPrincipal: { 
+    backgroundColor: '#fff', 
+    borderRadius: 16, 
+    marginRight: 10,  
+    marginTop: 15, 
+    marginBottom: 15, 
+    padding: 16, 
+    shadowColor: '#000', 
+    shadowOffset: { width: 0, height: 2 }, 
+    shadowOpacity: 0.05, 
+    shadowRadius: 8, 
+    elevation: 2 
+  },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 },
   modalContent: { backgroundColor: '#FFF', borderRadius: 16, padding: 20, width: '100%', maxWidth: 360, elevation: 5, maxHeight: '80%' },
   modalTitle: { fontSize: 18, fontWeight: 'bold', color: '#212121', marginBottom: 15, textAlign: 'center' },
@@ -565,9 +617,9 @@ safeArea: {
   modalCancelar: { marginTop: 15, paddingVertical: 10, alignItems: 'center' },
   modalCancelarText: { fontSize: 16, fontWeight: 'bold', color: '#E53935' },
 
-  headerCarrinho: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, backgroundColor: '#FFF', borderBottomWidth: 1, borderBottomColor: '#EEEEEE' },
+  headerCarrinho: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, backgroundColor: '#FFF' },
   subtituloResumo: { fontSize: 14, color: '#2E7D32', fontWeight: '600', marginTop: 2 },
-  btnLimparTudo: { paddingVertical: 6, paddingHorizontal: 12, borderRadius: 8, backgroundColor: '#FFEBEE' },
+  btnLimparTudo: { paddingVertical: 6, paddingHorizontal: 12, borderRadius: 8, backgroundColor: '#FFEBEE',  borderWidth: 1, borderColor: '#ffcdd2', },
   btnLimparTudoText: { color: '#E53935', fontWeight: 'bold', fontSize: 13 },
   cardInfosFixas: { backgroundColor: '#ECEFF1', padding: 15, borderRadius: 12, marginVertical: 15 },
   infoFixaTexto: { fontSize: 14, color: '#37474F', marginBottom: 4 },

@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Image, ScrollView, StatusBar, StyleSheet, Text, TouchableHighlight, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, Image, ScrollView, StatusBar, StyleSheet, Text, TouchableHighlight, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import api, { API_URL } from "../../../services/api";
 
@@ -36,7 +36,6 @@ type DetalheReserva = {
   kits: KitReservado[];
 };
 
-
 export default function DetalheReservaPage() {
   const router = useRouter();
   const { id } = useLocalSearchParams(); 
@@ -45,21 +44,82 @@ export default function DetalheReservaPage() {
   const [reserva, setReserva] = useState<DetalheReserva | null>(null);
 
   useEffect(() => {
-  const fetchDetalheReserva = async () => {
+    const fetchDetalheReserva = async () => {
+      try {
+        setLoading(true);
+        const response = await api.get(`/reservas/${id}`);
+        if (response.data.status === 'success') {
+          setReserva(response.data.data);
+        }
+      } catch (error: any) {
+        console.log("Erro ao obter detalhes da reserva:", error.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (id) fetchDetalheReserva();
+  }, [id]);
+
+  const handleCancelarReserva = () => {
+    Alert.alert(
+      "Cancelar Reserva",
+      "Tens a certeza que queres cancelar este pedido? Os equipamentos deixarão de estar reservados para ti.",
+      [
+        { text: "Voltar Atrás", style: "cancel" },
+        { text: "Sim, Cancelar", style: "destructive", onPress: submeterCancelamento }
+      ]
+    );
+  };
+
+  const submeterCancelamento = async () => {
     try {
-      const response = await api.get(`/reservas/${id}`);
+      // Pedido simplificado utilizando a configuração global da tua instância da API
+      const response = await api.post(`/reservas/${id}/cancelar`, {});
+
       if (response.data.status === 'success') {
-        setReserva(response.data.data);
+        setReserva(prev => prev ? { ...prev, reserve_state_id: 10 } : null);
+
+        Alert.alert("Cancelada", "A tua reserva foi cancelada com sucesso.", [
+          { 
+            text: "OK", 
+            onPress: () => {
+              router.replace('/(tabs)/reservas');
+            } 
+          }
+        ]);
       }
     } catch (error: any) {
-      console.log("Erro ao obter detalhes da reserva:", error.message);
-    } finally {
-      setLoading(false); // <--- Corrigido aqui
+      const mensagemErro = error.response?.data?.message || "Ocorreu um erro ao cancelar.";
+      Alert.alert("Erro", mensagemErro);
     }
   };
 
-  if (id) fetchDetalheReserva();
-}, [id]);
+  const getStatusStyles = (stateId: number) => {
+    switch (stateId) {
+      case 1: 
+        return { texto: 'Pendente', sc: '#F0F0F0', tc: '#9E9E9E' };
+      case 2: 
+        return { texto: 'Autorizada', sc: '#E8F5E9', tc: '#2E7D32' };
+      case 3: 
+        return { texto: 'Recusada', sc: 'rgba(192, 80, 96, 0.12)', tc: '#c05060' };
+      case 4: 
+        return { texto: 'Em atraso', sc: 'rgba(192, 80, 96, 0.12)', tc: '#c05060' };
+      case 5: 
+      case 6: 
+        return { texto: 'Concluída', sc: '#E8F5E9', tc: '#2E7D32' };
+      case 7: 
+        return { texto: 'Entregue', sc: '#E8F5E9', tc: '#2E7D32' };
+      case 8: 
+        return { texto: 'Devolvido', sc: '#E8F5E9', tc: '#2E7D32' };
+      case 9: 
+        return { texto: 'Devolvido (Fora do Prazo)', sc: '#E8F5E9', tc: '#2E7D32' };
+      case 10:
+        return { texto: 'Cancelada', sc: '#FFF5F5', tc: '#c62828' };
+      default:
+        return { texto: 'Desconhecido', sc: '#F0F0F0', tc: '#9E9E9E' };
+    }
+  };
 
   const obterUrlImagem = (caminho?: string | null): string | undefined => {
     if (!caminho) return undefined;
@@ -75,31 +135,6 @@ export default function DetalheReservaPage() {
     const pad = (n: number) => n.toString().padStart(2, '0');
     return `${pad(s.getDate())}/${pad(s.getMonth() + 1)}/${s.getFullYear()} até ${pad(e.getDate())}/${pad(e.getMonth() + 1)}/${e.getFullYear()}`;
   };
-
-
-  const getStatusStyles = (stateId: number) => {
-  switch (stateId) {
-    case 1: 
-      return { texto: 'Pendente', sc: '#F0F0F0', tc: '#9E9E9E' }; // Cinzento
-    case 2: 
-      return { texto: 'Autorizada', sc: '#E8F5E9', tc: '#2E7D32' }; // Verde
-    case 3: 
-      return { texto: 'Recusada', sc: 'rgba(192, 80, 96, 0.12)', tc: '#c05060' }; // Vermelho
-    case 4: 
-      return { texto: 'Em atraso', sc: 'rgba(192, 80, 96, 0.12)', tc: '#c05060' }; // Vermelho
-    case 5: 
-    case 6: 
-      return { texto: 'Concluída', sc: '#E8F5E9', tc: '#2E7D32' }; // Verde
-    case 7: 
-      return { texto: 'Entregue', sc: '#E8F5E9', tc: '#2E7D32' }; // Verde
-    case 8: 
-      return { texto: 'Devolvido', sc: '#E8F5E9', tc: '#2E7D32' }; // Verde
-    case 9: 
-      return { texto: 'Devolvido (Fora do Prazo)', sc: '#E8F5E9', tc: '#2E7D32' }; // Verde
-    default:
-      return { texto: 'Desconhecido', sc: '#F0F0F0', tc: '#9E9E9E' };
-  }
-};
 
   if (loading) {
     return (
@@ -120,53 +155,46 @@ export default function DetalheReservaPage() {
     );
   }
 
-  // Substitui a partir do primeiro "return (" até ao início do Bloco de Resumo Superior:
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar backgroundColor="#ffffff" barStyle="dark-content" />
-
-      {/* Força o Expo Router a ocultar o Header nativo cinzento/padrão */}
       <Stack.Screen options={{ headerShown: false }} />
 
-      {/* Header Fixo Idêntico à Página de Reservas */}
+      {/* Header */}
       <View style={styles.header}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
             <Ionicons name="arrow-back" size={24} color="#0d1f30" />
           </TouchableOpacity>
           <View>
-            <Text style={styles.headerTitle}>Reserva </Text>
+            <Text style={styles.headerTitle}>Reserva</Text>
             <Text style={styles.headerSubtitle}>Detalhes da requisição</Text>
           </View>
         </View>
       </View>
 
-      {/* Conteúdo em Scroll com o fundo correto */}
+      {/* Corpo com Scroll */}
       <View style={styles.corpoConteudo}>
         <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
           
-          {/* Bloco de Resumo Superior */}
+          {/* Card Info Principal */}
           <View style={styles.cardInfoPrincipal}>
-            
-            
-              <View style={styles.statusRow}>
-  <Text style={styles.tituloDataTitle}>Período de Alocação</Text>
-  
-  {(() => {
-    const uiStatus = getStatusStyles(reserva.reserve_state_id);
-    return (
-      <View style={[styles.badge, { backgroundColor: uiStatus.sc }]}>
-        <Text style={[styles.badgeText, { color: uiStatus.tc }]}>
-          {uiStatus.texto}
-        </Text>
-      </View>
-    );
-  })()}
-</View>
-           
+            <View style={styles.statusRow}>
+              <Text style={styles.tituloDataTitle}>Período de Alocação</Text>
+              {(() => {
+                const uiStatus = getStatusStyles(reserva.reserve_state_id);
+                return (
+                  <View style={[styles.badge, { backgroundColor: uiStatus.sc }]}>
+                    <Text style={[styles.badgeText, { color: uiStatus.tc }]}>
+                      {uiStatus.texto}
+                    </Text>
+                  </View>
+                );
+              })()}
+            </View>
 
             <Text style={styles.textoDataReal}>
-               {formatarDataCompleta(reserva.start_date, reserva.end_date)}
+              {formatarDataCompleta(reserva.start_date, reserva.end_date)}
             </Text>
 
             <View style={styles.motivoContainer}>
@@ -175,8 +203,7 @@ export default function DetalheReservaPage() {
             </View>
           </View>
 
-          {/* Itens Individuais */}
-         {/* Itens Individuais */}
+          {/* Equipamentos Reservados */}
           {reserva.itens && reserva.itens.length > 0 && (
             <View style={styles.sectionContainer}>
               <Text style={styles.sectionTitle}>EQUIPAMENTOS RESERVADOS</Text>
@@ -184,10 +211,9 @@ export default function DetalheReservaPage() {
                 <TouchableHighlight 
                   key={`item-${item.id}-${index}`} 
                   style={styles.cardLista}
-                  underlayColor="#E8EAF6" // Cor ao dar clique/foco
-                  onPress={() => router.push(`/(protected)/detalhes/${item.id}`)} // Altera a rota se for diferente
+                  underlayColor="#E8EAF6"
+                  onPress={() => router.push(`/(protected)/detalhes/${item.id}`)}
                 >
-                  {/* Contentor interno necessário para manter o layout horizontal */}
                   <View style={styles.cardContentInternal}>
                     {item.image ? (
                       <Image source={{ uri: obterUrlImagem(item.image) }} style={styles.imagemListaMock} />
@@ -212,43 +238,52 @@ export default function DetalheReservaPage() {
             </View>
           )}
 
-          
-         {/* Kits Reservados */}
-        {reserva.kits && reserva.kits.length > 0 && (
-          <View style={styles.sectionContainer}>
-            <Text style={styles.sectionTitle}>KITS RESERVADOS</Text>
-            {reserva.kits.map((kit, index) => (
-              <TouchableHighlight 
-                key={`kit-${kit.id}-${index}`} 
-                style={styles.cardLista}
-                underlayColor="#E8EAF6" // Cor ao dar clique/foco
-                onPress={() => router.push(`/(protected)/detalhes/${kit.id}`)} // Altera a rota se for diferente
-              >
-                {/* Contentor interno necessário para manter o layout horizontal */}
-                <View style={styles.cardContentInternal}>
-                  {kit.image ? (
-                    <Image source={{ uri: obterUrlImagem(kit.image) }} style={styles.imagemListaMock} />
-                  ) : (
-                    <View style={[styles.imagemListaMock, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#F5F5F5' }]}>
-                      <Ionicons name="camera-outline" size={24} color="#B0BEC5" />
+          {/* Kits Reservados */}
+          {reserva.kits && reserva.kits.length > 0 && (
+            <View style={styles.sectionContainer}>
+              <Text style={styles.sectionTitle}>KITS RESERVADOS</Text>
+              {reserva.kits.map((kit, index) => (
+                <TouchableHighlight 
+                  key={`kit-${kit.id}-${index}`} 
+                  style={styles.cardLista}
+                  underlayColor="#E8EAF6"
+                  onPress={() => router.push(`/(protected)/detalhes/${kit.id}`)}
+                >
+                  <View style={styles.cardContentInternal}>
+                    {kit.image ? (
+                      <Image source={{ uri: obterUrlImagem(kit.image) }} style={styles.imagemListaMock} />
+                    ) : (
+                      <View style={[styles.imagemListaMock, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#F5F5F5' }]}>
+                        <Ionicons name="camera-outline" size={24} color="#B0BEC5" />
+                      </View>
+                    )}
+
+                    <View style={styles.listaTextoInfo}>
+                      <Text style={styles.cardTitulo} numberOfLines={1}>{kit.nome}</Text>
+                      <Text style={styles.cardSubtitulo} numberOfLines={1}>{kit.description || 'Sem descrição.'}</Text>
+                      <Text style={styles.textoPreco}>{Number(kit.price_day).toFixed(2)}€ / dia</Text>
                     </View>
-                  )}
 
-                  <View style={styles.listaTextoInfo}>
-                    <Text style={styles.cardTitulo} numberOfLines={1}>{kit.nome}</Text>
-                    <Text style={styles.cardSubtitulo} numberOfLines={1}>{kit.description || 'Sem descrição.'}</Text>
-                    <Text style={styles.textoPreco}>{Number(kit.price_day).toFixed(2)}€ / dia</Text>
+                    {/* Corrigido: Agora usa a variável local 'kit.quantidade' da iteração */}
+                    <View style={styles.badgeQtd}>
+                      <Text style={styles.badgeQtdText}>{kit.quantidade}x</Text>
+                    </View>
                   </View>
+                </TouchableHighlight>
+              ))}
+            </View>
+          )}
 
-                  <View style={styles.badgeQtd}>
-                    <Text style={styles.badgeQtdText}>{kit.quantidade}x</Text>
-                  </View>
-                </View>
-              </TouchableHighlight>
-            ))}
-          </View>
-        )}
-          
+          {/* Botão de Cancelamento condicional */}
+          {reserva.reserve_state_id === 1 && (
+            <TouchableOpacity 
+              style={styles.botaoCancelar} 
+              onPress={handleCancelarReserva}
+            >
+              <Text style={styles.textoBotaoCancelar}>Cancelar Reserva</Text>
+            </TouchableOpacity>
+          )}
+
           <View style={{ height: 40 }} />
         </ScrollView>
       </View>
@@ -257,94 +292,47 @@ export default function DetalheReservaPage() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { 
-    flex: 1, 
-    backgroundColor: '#ffffff' 
-  },
-  header: { 
-    backgroundColor: '#fff', 
-    paddingHorizontal: 20, 
-    paddingTop: 20, 
-    paddingBottom: 13
-  },
-  headerTitle: { 
-    fontSize: 22, 
-    fontWeight: '800', 
-    color: '#0d1f30' 
-  },
-  headerSubtitle: { 
-    fontSize: 12, 
-    color: '#7a94aa', 
-    marginTop: 2 
-  },
-  backButton: {
-    marginRight: 4,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  corpoConteudo: {
-    flex: 1,
-    backgroundColor: '#f4f7fc' 
-  },
-  container: { flex: 1, backgroundColor: '#f4f7fc' },
+  safeArea: { flex: 1, backgroundColor: '#ffffff' },
+  header: { backgroundColor: '#fff', paddingHorizontal: 20, paddingTop: 20, paddingBottom: 13 },
+  headerTitle: { fontSize: 22, fontWeight: '800', color: '#0d1f30' },
+  headerSubtitle: { fontSize: 12, color: '#7a94aa', marginTop: 2 },
+  backButton: { marginRight: 4, justifyContent: 'center', alignItems: 'center' },
+  corpoConteudo: { flex: 1, backgroundColor: '#f4f7fc' },
   containerLoading: { flex: 1, backgroundColor: '#f4f7fc', justifyContent: 'center', alignItems: 'center', padding: 20 },
   errorText: { color: '#7a94aa', fontSize: 14, textAlign: 'center' },
-
   cardLista: { 
-  flexDirection: 'row', 
-  alignItems: 'center', 
-  backgroundColor: '#FFF', 
-  marginHorizontal: 20, 
-  marginBottom: 10, 
-  borderRadius: 16, 
-  shadowColor: '#000', 
-  shadowOffset: { width: 0, height: 2 }, 
-  shadowOpacity: 0.05, 
-  shadowRadius: 8, 
-  elevation: 2,
-  overflow: 'hidden' // Garante que o efeito de clique respeita as bordas arredondadas
-},
-
-cardContentInternal: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  padding: 12, // O padding passa do cardLista para aqui
-  flex: 1
-},
-badge: { 
-  paddingHorizontal: 10, 
-  paddingVertical: 4, 
-  borderRadius: 12,
-  minWidth: 74,
-  alignItems: 'center'
-},
-badgeText: { 
-  fontSize: 11, 
-  fontWeight: '600'
-},
-  
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    backgroundColor: '#FFF', 
+    marginHorizontal: 20, 
+    marginBottom: 10, 
+    borderRadius: 16, 
+    shadowColor: '#000', 
+    shadowOffset: { width: 0, height: 2 }, 
+    shadowOpacity: 0.05, 
+    shadowRadius: 8, 
+    elevation: 2,
+    overflow: 'hidden'
+  },
+  cardContentInternal: { flexDirection: 'row', alignItems: 'center', padding: 12, flex: 1 },
+  badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, minWidth: 74, alignItems: 'center' },
+  badgeText: { fontSize: 11, fontWeight: '600' },
   cardInfoPrincipal: { backgroundColor: '#fff', borderRadius: 16, marginHorizontal: 20, marginTop: 15, marginBottom: 15, padding: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 },
   labelSecundario: { fontSize: 11, fontWeight: '700', color: '#8a9fb4', letterSpacing: 0.5 },
   statusRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, marginBottom: 6 },
   tituloDataTitle: { fontSize: 18, fontWeight: '800', color: '#212121' },
   textoDataReal: { fontSize: 13, color: '#5a7a9a', fontWeight: '500', marginTop: 4 },
-  
   motivoContainer: { marginTop: 15, paddingTop: 15, borderTopWidth: 1, borderTopColor: '#e2e8f0' },
   motivoTexto: { fontSize: 14, color: '#212121', marginTop: 6, lineHeight: 20 },
-
   sectionContainer: { marginBottom: 15 },
   sectionTitle: { fontSize: 12, fontWeight: 'bold', color: '#9E9E9E', marginHorizontal: 20, marginBottom: 12, letterSpacing: 0.5 },
-  
-  // Estilo Identitário Horizontal (Igual ao catálogo)
   imagemListaMock: { width: 65, height: 65, backgroundColor: '#E8EAF6', borderRadius: 12, marginRight: 15 },
   listaTextoInfo: { flex: 1, justifyContent: 'center' },
   cardTitulo: { fontSize: 15, fontWeight: 'bold', color: '#212121', marginBottom: 2 },
   cardSubtitulo: { fontSize: 12, color: '#757575', marginBottom: 4 },
   textoPreco: { fontSize: 12, fontWeight: '700', color: '#065294' },
-  
-  badgeEstado: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, backgroundColor: '#E8F5E9' },
-  badgeEstadoText: { fontSize: 11, fontWeight: '700', color: '#2E7D32', textTransform: 'uppercase' },
-  
-  badgeQtd: { backgroundColor: '#f0f3f8', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 },
-  badgeQtdText: { color: '#065294', fontWeight: 'bold', fontSize: 13 }
+  badgeQtd: { backgroundColor: '#f4f7fc', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: '#eaf0f8' },
+  badgeQtdText: { color: '#065294', fontWeight: 'bold', fontSize: 14 },
+  botaoCancelar: { backgroundColor: '#FFEBEE', borderWidth: 1, borderColor: '#ffcdd2', borderRadius: 12, paddingVertical: 14, marginHorizontal: 20, marginTop: 10, alignItems: 'center' },
+  textoBotaoCancelar: { color: '#c62828', fontSize: 15, fontWeight: 'bold' }
 });

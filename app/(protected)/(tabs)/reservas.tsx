@@ -72,7 +72,9 @@ export default function Reservas() {
         return { grupo: 'Concluídas', texto: 'Devolvido (Fora do Prazo)', sc: '#E8F5E9', tc: '#2E7D32' }; // Verde
 
       case 3: // Não Autorizada
-        return { grupo: 'Recusadas', texto: 'Recusada', sc: 'rgba(192, 80, 96, 0.12)', tc: '#c05060' }; // Vermelho
+        return { grupo: 'Recusadas', texto: 'Recusada', sc: 'rgba(192, 80, 96, 0.12)', tc: '#c05060' }; 
+      case 10:
+      return { texto: 'Cancelada', sc: 'rgba(192, 80, 96, 0.12)', tc: '#c05060' };
 
       default:
         return { grupo: 'Todas', texto: 'Desconhecido', sc: '#F0F0F0', tc: '#9E9E9E' };

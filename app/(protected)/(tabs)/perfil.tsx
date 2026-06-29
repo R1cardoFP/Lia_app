@@ -2,9 +2,9 @@ import { useAuth } from "@/hooks/useAuth";
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
 import React, { useCallback, useState } from 'react';
-import { Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, Image, Linking, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { API_URL } from '../../../services/api';
+import api, { API_URL } from '../../../services/api';
 
 
 interface OpcaoMenuProps {
@@ -21,13 +21,16 @@ export default function Perfil() {
   const [userData, setUserData] = useState({ name: 'Carregando...', email: '', role: 'Estudante' });
   const [userInitials, setUserInitials] = useState('');
   const [imageUri, setImageUri] = useState<string | null>(null);
+  const [stats, setStats] = useState({ reservas: 0, ativas: 0, itens_usados: 0 });
+  const [modalAjuda, setModalAjuda] = useState(false);
 
 
 
-  useFocusEffect(
+   useFocusEffect(
     useCallback(() => {
       if (user) {
         processarDadosUtilizador();
+        carregarEstatisticas();
       }
     }, [user])
   );
@@ -65,6 +68,16 @@ export default function Perfil() {
     }
   };
 
+   const carregarEstatisticas = async () => {
+    try {
+      const response = await api.get('/perfil/estatisticas');
+      if (response.data.status === 'success') {
+        setStats(response.data.data);
+      }
+    } catch (err) {
+      console.log('Erro ao carregar estatísticas:', err);
+    }
+  };
 
   const handleLogout = () => {
     Alert.alert(
@@ -118,31 +131,91 @@ export default function Perfil() {
         {/* --- CARTÃO DE ESTATÍSTICAS --- */}
         <View style={styles.statsCard}>
           <View style={styles.statItem}>
-            <Text style={styles.statNumberBlue}>12</Text>
+            <Text style={styles.statNumberBlue}>{stats.reservas}</Text>
             <Text style={styles.statLabel}>Reservas</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
-            <Text style={styles.statNumberGreen}>1</Text>
+            <Text style={styles.statNumberGreen}>{stats.ativas}</Text>
             <Text style={styles.statLabel}>Ativas</Text>
           </View>
           <View style={styles.statDivider} />
           <View style={styles.statItem}>
-            <Text style={styles.statNumberDark}>8</Text>
+            <Text style={styles.statNumberDark}>{stats.itens_usados}</Text>
             <Text style={styles.statLabel}>Itens usados</Text>
           </View>
         </View>
 
         {/* --- LISTA DE OPÇÕES --- */}
         <View style={styles.menuContainer}>
-          <OpcaoMenu icone="time-outline" titulo="Histórico de Requisições" onPress={() => console.log('Ir para histórico')} />
+          <OpcaoMenu icone="time-outline" titulo="Histórico de Requisições" onPress={() => router.push('/reservas')} />
           <OpcaoMenu icone="person-outline" titulo="Editar perfil" onPress={() => router.push('/editar-perfil')} />
-          <OpcaoMenu icone="help-circle-outline" titulo="Ajuda & Suporte" onPress={() => console.log('Ir para ajuda')} />
+          <OpcaoMenu icone="help-circle-outline" titulo="Ajuda & Suporte"  onPress={() => setModalAjuda(true)} />
           <View style={styles.espacadorMenu} />
           <OpcaoMenu icone="log-out-outline" titulo="Terminar sessão" corTexto="#E53935" corIcone="#E53935" fundoIcone="#FFEBEE" onPress={handleLogout} />
         </View>
 
       </ScrollView>
+
+      <Modal visible={modalAjuda} transparent animationType="fade">
+        <View style={styles.ajudaOverlay}>
+          <View style={styles.ajudaContent}>
+            <View style={styles.ajudaIconCirculo}>
+              <Ionicons name="headset-outline" size={32} color="#005596" />
+            </View>
+            <Text style={styles.ajudaTitulo}>Ajuda & Suporte</Text>
+            <Text style={styles.ajudaSubtitulo}>
+              Tens alguma dúvida? Contacta o técnico responsável pela LIA.
+            </Text>
+
+            {/* NOME */}
+            <View style={styles.ajudaContacto}>
+              <View style={[styles.ajudaContactoIcon, { backgroundColor: '#EDE7F6' }]}>
+                <Ionicons name="person-outline" size={20} color="#5E35B1" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.ajudaContactoLabel}>Técnico</Text>
+                <Text style={styles.ajudaContactoValor}>Orlando Morais</Text>
+              </View>
+            </View>
+
+            {/* EMAIL */}
+            <TouchableOpacity
+              style={styles.ajudaContacto}
+              onPress={() => Linking.openURL('mailto:omorais@estg.ipvc.pt')}
+            >
+              <View style={[styles.ajudaContactoIcon, { backgroundColor: '#E3F2FD' }]}>
+                <Ionicons name="mail-outline" size={20} color="#005596" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.ajudaContactoLabel}>Email</Text>
+                <Text style={styles.ajudaContactoValor}>omorais@estg.ipvc.pt</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#B0BEC5" />
+            </TouchableOpacity>
+
+            {/* TELEMÓVEL */}
+            <TouchableOpacity
+              style={styles.ajudaContacto}
+              onPress={() => Linking.openURL('tel:+351912345678')}
+            >
+              <View style={[styles.ajudaContactoIcon, { backgroundColor: '#E8F5E9' }]}>
+                <Ionicons name="call-outline" size={20} color="#2E7D32" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.ajudaContactoLabel}>Telemóvel</Text>
+                <Text style={styles.ajudaContactoValor}>258919700</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={20} color="#B0BEC5" />
+            </TouchableOpacity>
+
+            <TouchableOpacity style={[styles.ajudaFechar, { marginTop: 10 }]} onPress={() => setModalAjuda(false)}>
+              <Text style={styles.ajudaFecharText}>Fechar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
     </SafeAreaView>
   );
 }
@@ -169,4 +242,15 @@ const styles = StyleSheet.create({
   iconContainer: { width: 40, height: 40, borderRadius: 10, justifyContent: 'center', alignItems: 'center', marginRight: 15 },
   menuText: { flex: 1, fontSize: 15, fontWeight: '600' },
   espacadorMenu: { height: 1, backgroundColor: '#F0F0F0', marginHorizontal: 20, marginVertical: 5 },
+  ajudaOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'center', alignItems: 'center', padding: 20 },
+  ajudaContent: { backgroundColor: '#FFF', borderRadius: 20, padding: 24, width: '100%', maxWidth: 360, alignItems: 'center', elevation: 5, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 12 },
+  ajudaIconCirculo: { width: 64, height: 64, borderRadius: 32, backgroundColor: '#E3F2FD', justifyContent: 'center', alignItems: 'center', marginBottom: 16 },
+  ajudaTitulo: { fontSize: 20, fontWeight: 'bold', color: '#212121', marginBottom: 6 },
+  ajudaSubtitulo: { fontSize: 14, color: '#757575', textAlign: 'center', marginBottom: 20, lineHeight: 20 },
+  ajudaContacto: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8F9FA', borderRadius: 12, padding: 12, width: '100%', marginBottom: 10 },
+  ajudaContactoIcon: { width: 40, height: 40, borderRadius: 10, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
+  ajudaContactoLabel: { fontSize: 12, color: '#9E9E9E', fontWeight: '500' },
+  ajudaContactoValor: { fontSize: 15, color: '#212121', fontWeight: '600', marginTop: 2 },
+  ajudaFechar: { backgroundColor: '#005596', paddingVertical: 14, borderRadius: 12, width: '100%', alignItems: 'center' },
+  ajudaFecharText: { color: '#FFF', fontSize: 15, fontWeight: 'bold' },
 });

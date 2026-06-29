@@ -28,7 +28,7 @@ interface ContextoReservaProps {
 }
 
 export default function DetalhesEquipamento() {
-  const { id } = useLocalSearchParams();
+  const { id, tipo } = useLocalSearchParams();
   const router = useRouter();
   const insets = useSafeAreaInsets();
   
@@ -36,10 +36,12 @@ export default function DetalhesEquipamento() {
   const { adicionarItem, temReservaAtiva, reserva } = useReserva() as ContextoReservaProps;
   
   const [item, setItem] = useState<any>(null);
+  const [datasBloqueadas, setDatasBloqueadas] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   
   // Estado local para controlar a quantidade que o utilizador quer levar
   const [quantidadeSelecionada, setQuantidadeSelecionada] = useState(1);
+
 
   useEffect(() => {
     carregarDetalhes();
@@ -58,11 +60,13 @@ export default function DetalhesEquipamento() {
   const carregarDetalhes = async () => {
     try {
       const token = await AsyncStorage.getItem('userToken');
-      
-      let endpoint = `/item/${id}`;
+
+      const tipoParam = tipo || 'item'; // fallback seguro
+
+      let endpoint = `/item/${id}?tipo=${tipoParam}`;
 
       if (temReservaAtiva) {
-        endpoint += `?start_date=${reserva.dataInicio}&end_date=${reserva.dataFim}`;
+        endpoint += `&start_date=${reserva.dataInicio}&end_date=${reserva.dataFim}`;
       }
 
       const response = await api.get(endpoint, {
@@ -72,6 +76,19 @@ export default function DetalhesEquipamento() {
       if (response.data.status === 'success') {
         setItem(response.data.data);
       }
+
+      // Datas esgotadas
+      try {
+        const datasResponse = await api.get(`/item/${id}/datas-esgotadas?tipo=${tipoParam}`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (datasResponse.data.status === 'success') {
+          setDatasBloqueadas(datasResponse.data.data);
+        }
+      } catch (err) {
+        console.log('Aviso: Não foi possível carregar as datas bloqueadas do calendário', err);
+      }
+
     } catch (error) {
       console.log('Erro ao carregar detalhes:', error);
     } finally {
@@ -97,6 +114,19 @@ export default function DetalhesEquipamento() {
       ]
     );
   };
+
+  
+ const datasMarcadas = datasBloqueadas.reduce((acc: any, dataString: string) => {
+  acc[dataString] = {
+    disabled: true,
+    disableTouchEvent: true,
+    customStyles: {
+      container: { backgroundColor: '#FFEBEE', borderRadius: 6 },
+      text: { color: '#c62828', fontWeight: 'bold' },
+    },
+  };
+  return acc;
+}, {});
 
   if (loading) {
     return (
@@ -174,6 +204,9 @@ export default function DetalhesEquipamento() {
           
           <View style={styles.calendarioContainer}>
             <Calendar
+                markingType="custom"
+                markedDates={datasMarcadas}
+                minDate={new Date().toISOString().split('T')[0]}
               theme={{
                 todayTextColor: '#005596',
                 arrowColor: '#005596',
@@ -181,7 +214,10 @@ export default function DetalhesEquipamento() {
               }}
             />
           </View>
-          <Text style={styles.calendarioNota}>Os dias ocupados na base de dados aparecerão marcados no calendário.</Text>
+          <View style={styles.legendaContainer}>
+            <View style={styles.legendaDot} />
+            <Text style={styles.legendaTexto}>Dias a vermelho indicam que o equipamento está indisponível.</Text>
+          </View>
 
           <View style={{ height: 140 }} />
         </View>
@@ -267,5 +303,8 @@ const styles = StyleSheet.create({
   stepperValue: { fontSize: 16, fontWeight: 'bold', color: '#212121', paddingHorizontal: 15 },
   
   btnReservar: { backgroundColor: '#065294', flexDirection: 'row', paddingHorizontal: 22, paddingVertical: 12, borderRadius: 12, alignItems: 'center', height: 44 },
-  btnReservarText: { color: '#FFF', fontSize: 15, fontWeight: 'bold' }
+  btnReservarText: { color: '#FFF', fontSize: 15, fontWeight: 'bold' },
+  legendaContainer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 15 },
+  legendaDot: { width: 12, height: 12, borderRadius: 6, backgroundColor: '#FFEBEE', borderWidth: 1, borderColor: '#c62828', marginRight: 8 },
+  legendaTexto: { fontSize: 13, color: '#757575', textAlign: 'center' }
 });

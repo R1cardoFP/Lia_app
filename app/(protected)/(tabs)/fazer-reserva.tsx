@@ -2,7 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { default as React, useEffect, useState } from 'react';
-import { Alert, FlatList, Modal, ScrollView, StatusBar, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Modal, ScrollView, StatusBar, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { Calendar, LocaleConfig } from 'react-native-calendars';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useReserva } from '../../../contexts/reservaContext';
@@ -48,6 +48,8 @@ export default function FazerReserva() {
   const [modalDataFim, setModalDataFim] = useState(false);
   const [modalCentroCusto, setModalCentroCusto] = useState(false);
   const [modalDiaCiclico, setModalDiaCiclico] = useState(false);
+
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     carregarCentrosDeCusto();
@@ -96,6 +98,7 @@ export default function FazerReserva() {
       return;
     }
 
+     setSubmitting(true);
     try {
       const token = await AsyncStorage.getItem('userToken');
       
@@ -140,6 +143,8 @@ export default function FazerReserva() {
       // Se o Laravel devolver um erro de validação (ex: falta de stock ou user_type_id == 6)
       const mensagemErro = error.response?.data?.message || 'Ocorreu um problema ao submeter a reserva no servidor.';
       Alert.alert('Erro ao Reservar', mensagemErro);
+    }finally {
+      setSubmitting(false);
     }
   };
 
@@ -393,9 +398,19 @@ export default function FazerReserva() {
 
       {reserva.itens.length > 0 && (
         <View style={styles.footerFixo}>
-          <TouchableOpacity style={styles.btnConfirmarFinal} onPress={handleConfirmarReservaFinal}>
-            <Ionicons name="checkmark-circle-outline" size={22} color="#FFF" style={{ marginRight: 8 }} />
-            <Text style={styles.btnConfirmarFinalText}>Confirmar e Submeter Reserva</Text>
+          <TouchableOpacity 
+            style={[styles.btnConfirmarFinal, submitting && { opacity: 0.7 }]} 
+            onPress={handleConfirmarReservaFinal}
+            disabled={submitting}
+          >
+            {submitting ? (
+              <ActivityIndicator color="#FFF" />
+            ) : (
+              <>
+                <Ionicons name="checkmark-circle-outline" size={22} color="#FFF" style={{ marginRight: 8 }} />
+                <Text style={styles.btnConfirmarFinalText}>Confirmar e Submeter Reserva</Text>
+              </>
+            )}
           </TouchableOpacity>
         </View>
       )}

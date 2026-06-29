@@ -64,20 +64,20 @@ export default function Catalogo() {
   const { temReservaAtiva, reserva } = useReserva() as any;
 
   // Carrega o catálogo ao focar no ecrã (respeitando a pesquisa atual se houver)
-  useFocusEffect(
-    useCallback(() => {
-      carregarCatalogo(1, categoriaAtiva, pesquisa);
-    }, [temReservaAtiva, categoriaAtiva])
-  );
+ useFocusEffect(
+    useCallback(() => {
+      carregarCatalogo(1, categoriaAtiva, pesquisa);
+    }, [temReservaAtiva, categoriaAtiva])
+  );
 
-  // DEBOUNCE: Escuta a variável 'pesquisa' e faz a busca automática após 300ms sem digitar
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      carregarCatalogo(1, categoriaAtiva, pesquisa);
-    }, 300);
+  // DEBOUNCE: Escuta a variável 'pesquisa' e faz a busca automática após 300ms sem digitar
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      carregarCatalogo(1, categoriaAtiva, pesquisa);
+    }, 300);
 
-    return () => clearTimeout(timer);
-  }, [pesquisa]);
+    return () => clearTimeout(timer);
+  }, [pesquisa]);
   
   const carregarCatalogo = async (numeroPagina: number, catId: string | number = categoriaAtiva, termoPesquisa: string = pesquisa) => {
     if (loadingMore) return;
@@ -163,6 +163,14 @@ export default function Catalogo() {
     );
   };
 
+
+    if (loadingInitial && equipamentosItens.length === 0) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color="#1A237E" />
+      </View>
+    );
+  }
   const renderFooter = () => {
     if (!loadingMore) return <View style={{ height: 40 }} />; 
     return (
@@ -252,7 +260,7 @@ export default function Catalogo() {
                     key={kit.id} 
                     underlayColor="#F5F5F5" 
                     style={{ borderRadius: 16, marginRight: 15 }} // MARGIN ADICIONADA AQUI para separar os touchables
-                    onPress={() => router.push(`/detalhes/${kit.id}`)}
+                    onPress={() => router.push(`/detalhes/${kit.id}?tipo=kit`)}
                   >
                     {/* Remove o marginRight do cardDestaque interno para não dar conflito */}
                     <View style={[styles.cardDestaque, { marginRight: 0 }]}>
@@ -286,7 +294,7 @@ export default function Catalogo() {
           <TouchableHighlight 
             underlayColor="#F5F5F5"
             style={{ borderRadius: 16, marginHorizontal: 20, marginBottom: 12 }} 
-            onPress={() => router.push(`/detalhes/${item.id}`)}
+            onPress={() =>  router.push(`/detalhes/${item.id}?tipo=${categoriaAtiva === 'Kits' ? 'kit' : 'item'}`)} 
           >
             <View style={styles.cardLista}>
               {item.image ? (

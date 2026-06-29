@@ -34,8 +34,18 @@ export default function ProtectedLayout() {
       <Stack> 
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} /> 
 
+
       <Stack.Screen 
           name="detalhes/[id]" 
+          options={{ 
+            headerShown: false,
+            animation: 'slide_from_right' 
+          }} 
+        /> 
+
+
+        <Stack.Screen 
+          name="verReserva/[id]" 
           options={{ 
             headerShown: false,
             animation: 'slide_from_right' 

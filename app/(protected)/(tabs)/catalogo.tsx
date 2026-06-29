@@ -406,28 +406,5 @@ const styles = StyleSheet.create({
   listaTextoInfo: { flex: 1, justifyContent: 'center' },
   badge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, alignSelf: 'flex-start' },
   badgeText: { fontSize: 11, fontWeight: 'bold' },
-  pesquisaContainer: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  backgroundColor: '#FFF',
-  marginHorizontal: 20,
-  marginTop: 15,
-  paddingHorizontal: 15,
-  height: 48,
-  borderRadius: 12,
-  shadowColor: '#000',
-  shadowOffset: { width: 0, height: 2 },
-  shadowOpacity: 0.04,
-  shadowRadius: 6,
-  elevation: 2,
-},
-pesquisaIcone: {
-  marginRight: 10,
-},
-pesquisaInput: {
-  flex: 1,
-  fontSize: 14,
-  color: '#212121',
-  height: '100%',
-},
+
 });

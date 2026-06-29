@@ -149,8 +149,8 @@ export default function Perfil() {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#F8F9FA' },
-  headerBackground: { backgroundColor: '#005596', alignItems: 'center', paddingTop: 40, paddingBottom: 70, borderBottomLeftRadius: 20, borderBottomRightRadius: 20 },
-  avatarBig: { width: 80, height: 80, borderRadius: 40, backgroundColor: '#337BB5', justifyContent: 'center', alignItems: 'center', marginBottom: 15, borderWidth: 3, borderColor: '#004780', overflow: 'hidden' },
+  headerBackground: { backgroundColor: '#065294', alignItems: 'center', paddingTop: 40, paddingBottom: 70, borderBottomLeftRadius: 20, borderBottomRightRadius: 20 },
+  avatarBig: { width: 80, height: 80, borderRadius: 40, backgroundColor: '#337BB5', justifyContent: 'center', alignItems: 'center', marginBottom: 15, borderWidth: 3, borderColor: '#065294', overflow: 'hidden' },
   imageAvatar: { width: 80, height: 80, borderRadius: 40 }, 
   avatarTextBig: { fontSize: 28, fontWeight: 'bold', color: '#FFF' },
   nameText: { fontSize: 22, fontWeight: 'bold', color: '#FFF', marginBottom: 4 },
@@ -160,7 +160,7 @@ const styles = StyleSheet.create({
   statsCard: { flexDirection: 'row', backgroundColor: '#FFF', marginHorizontal: 20, borderRadius: 16, paddingVertical: 20, marginTop: -40, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 10, elevation: 5 },
   statItem: { flex: 1, alignItems: 'center' },
   statDivider: { width: 1, backgroundColor: '#F0F0F0', height: '80%', alignSelf: 'center' },
-  statNumberBlue: { fontSize: 22, fontWeight: 'bold', color: '#005596', marginBottom: 4 },
+  statNumberBlue: { fontSize: 22, fontWeight: 'bold', color: '#065294', marginBottom: 4 },
   statNumberGreen: { fontSize: 22, fontWeight: 'bold', color: '#00BFA5', marginBottom: 4 },
   statNumberDark: { fontSize: 22, fontWeight: 'bold', color: '#424242', marginBottom: 4 },
   statLabel: { fontSize: 11, color: '#9E9E9E', fontWeight: '500' },

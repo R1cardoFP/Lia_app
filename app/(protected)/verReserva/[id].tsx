@@ -1,41 +1,41 @@
+import { Ionicons } from '@expo/vector-icons';
 import { Stack, useLocalSearchParams, useRouter } from "expo-router";
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import api from "../../../services/api"; // Ajusta o caminho do import se necessário
-
-type PivotData = {
-  quantity: number;
-};
+import { ActivityIndicator, Image, ScrollView, StatusBar, StyleSheet, Text, TouchableHighlight, TouchableOpacity, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import api, { API_URL } from "../../../services/api";
 
 type ItemReservado = {
   id: number;
-  name?: string;
-  nome?: string;
+  nome: string;
   model: string;
-  category: string;
-  pivot?: PivotData;
-  quantity?: number;
+  image?: string;
+  quantidade: number;
+  price_day: number;
 };
 
 type KitReservado = {
   id: number;
-  name: string;
+  nome: string;
   description: string;
-  pivot?: PivotData;
-  quantity?: number;
+  image?: string;
+  quantidade: number;
+  price_day: number;
 };
 
 type DetalheReserva = {
   id: number;
-  description: string;
   reserve_state_id: number;
+  description: string;
+  estado: string;
   start_date: string;
   end_date: string;
-  items?: ItemReservado[];
-  item_reserves?: any[]; // Fallback para a relação padrão do Laravel
-  kits?: KitReservado[];
-  kit_reserves?: any[];  // Fallback para a relação padrão do Laravel
+  cost: number | string;
+  is_paid: number;
+  itens: ItemReservado[];
+  kits: KitReservado[];
 };
+
 
 export default function DetalheReservaPage() {
   const router = useRouter();
@@ -45,43 +45,25 @@ export default function DetalheReservaPage() {
   const [reserva, setReserva] = useState<DetalheReserva | null>(null);
 
   useEffect(() => {
-    const fetchDetalheReserva = async () => {
-      try {
-        const response = await api.get(`/reservas/${id}`);
-        if (response.data.status === 'success') {
-          setReserva(response.data.data);
-        }
-      } catch (error: any) {
-        console.log("Erro ao obter detalhes da reserva:", error.message);
-      } finally {
-        setLoading(false);
+  const fetchDetalheReserva = async () => {
+    try {
+      const response = await api.get(`/reservas/${id}`);
+      if (response.data.status === 'success') {
+        setReserva(response.data.data);
       }
-    };
-
-    if (id) fetchDetalheReserva();
-  }, [id]);
-
-  const getStatusStyles = (stateId: number) => {
-    switch (stateId) {
-      case 1:
-        return { texto: 'pendente', sc: 'rgba(138, 159, 180, 0.15)', tc: '#5a7a9a' };
-      case 2:
-        return { texto: 'autorizada', sc: 'rgba(0, 163, 133, 0.12)', tc: '#00a385' };
-      case 4:
-        return { texto: 'Em Atraso', sc: 'rgba(192, 80, 96, 0.12)', tc: '#c05060' };
-      case 7:
-        return { texto: 'entregue', sc: 'rgba(0, 163, 133, 0.12)', tc: '#00a385' };
-      case 5:
-      case 6:
-        return { texto: 'Concluída', sc: 'rgba(192, 80, 96, 0.12)', tc: '#c05060' };
-      case 8:
-      case 9:
-        return { texto: 'Devolvido', sc: 'rgba(0, 163, 133, 0.12)', tc: '#00a385' };
-      case 3:
-        return { texto: 'recusada', sc: 'rgba(192, 80, 96, 0.12)', tc: '#c05060' };
-      default:
-        return { texto: 'Desconhecido', sc: '#e8f0f9', tc: '#5a7a9a' };
+    } catch (error: any) {
+      console.log("Erro ao obter detalhes da reserva:", error.message);
+    } finally {
+      setLoading(false); // <--- Corrigido aqui
     }
+  };
+
+  if (id) fetchDetalheReserva();
+}, [id]);
+
+  const obterUrlImagem = (caminho?: string | null): string | undefined => {
+    if (!caminho) return undefined;
+    return `${API_URL}/${caminho.startsWith('/') ? caminho.substring(1) : caminho}`;
   };
 
   const formatarDataCompleta = (startStr: string, endStr: string) => {
@@ -93,6 +75,31 @@ export default function DetalheReservaPage() {
     const pad = (n: number) => n.toString().padStart(2, '0');
     return `${pad(s.getDate())}/${pad(s.getMonth() + 1)}/${s.getFullYear()} até ${pad(e.getDate())}/${pad(e.getMonth() + 1)}/${e.getFullYear()}`;
   };
+
+
+  const getStatusStyles = (stateId: number) => {
+  switch (stateId) {
+    case 1: 
+      return { texto: 'Pendente', sc: '#F0F0F0', tc: '#9E9E9E' }; // Cinzento
+    case 2: 
+      return { texto: 'Autorizada', sc: '#E8F5E9', tc: '#2E7D32' }; // Verde
+    case 3: 
+      return { texto: 'Recusada', sc: 'rgba(192, 80, 96, 0.12)', tc: '#c05060' }; // Vermelho
+    case 4: 
+      return { texto: 'Em atraso', sc: 'rgba(192, 80, 96, 0.12)', tc: '#c05060' }; // Vermelho
+    case 5: 
+    case 6: 
+      return { texto: 'Concluída', sc: '#E8F5E9', tc: '#2E7D32' }; // Verde
+    case 7: 
+      return { texto: 'Entregue', sc: '#E8F5E9', tc: '#2E7D32' }; // Verde
+    case 8: 
+      return { texto: 'Devolvido', sc: '#E8F5E9', tc: '#2E7D32' }; // Verde
+    case 9: 
+      return { texto: 'Devolvido (Fora do Prazo)', sc: '#E8F5E9', tc: '#2E7D32' }; // Verde
+    default:
+      return { texto: 'Desconhecido', sc: '#F0F0F0', tc: '#9E9E9E' };
+  }
+};
 
   if (loading) {
     return (
@@ -113,121 +120,231 @@ export default function DetalheReservaPage() {
     );
   }
 
-  const uiStatus = getStatusStyles(reserva.reserve_state_id);
-  
-  // Normalização das listas para lidar com os diferentes formatos que o Laravel pode enviar
-  const listaItens = reserva.items || (reserva.item_reserves ? reserva.item_reserves.map(ir => ({ ...ir.item, quantity: ir.quantity })) : []);
-  const listaKits = reserva.kits || (reserva.kit_reserves ? reserva.kit_reserves.map(kr => ({ ...kr.kit, quantity: kr.quantity })) : []);
-
+  // Substitui a partir do primeiro "return (" até ao início do Bloco de Resumo Superior:
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
-      {/* Botão de Voltar */}
-      <Stack.Screen options={{ 
-      title: `Reserva #${id}`, 
-      headerShown: true,
-      headerTitleAlign: 'center' 
-    }} />
+    <SafeAreaView style={styles.safeArea}>
+      <StatusBar backgroundColor="#ffffff" barStyle="dark-content" />
 
-      {/* Bloco de Resumo Superior */}
-      <View style={styles.cardInfoPrincipal}>
-        <Text style={styles.labelSecundario}>RESERVA #{reserva.id}</Text>
-        
-        <View style={styles.statusRow}>
-          <Text style={styles.tituloDataTitle}>Período de Alocação</Text>
-          <View style={[styles.badge, { backgroundColor: uiStatus.sc, borderColor: uiStatus.tc }]}>
-            <Text style={[styles.badgeText, { color: uiStatus.tc }]}>{uiStatus.texto}</Text>
+      {/* Força o Expo Router a ocultar o Header nativo cinzento/padrão */}
+      <Stack.Screen options={{ headerShown: false }} />
+
+      {/* Header Fixo Idêntico à Página de Reservas */}
+      <View style={styles.header}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={24} color="#0d1f30" />
+          </TouchableOpacity>
+          <View>
+            <Text style={styles.headerTitle}>Reserva </Text>
+            <Text style={styles.headerSubtitle}>Detalhes da requisição</Text>
           </View>
-        </View>
-
-        <Text style={styles.textoDataReal}>
-          📅 {formatarDataCompleta(reserva.start_date, reserva.end_date)}
-        </Text>
-
-        {/* Motivo da Reserva */}
-        <View style={styles.motivoContainer}>
-          <Text style={styles.labelSecundario}>MOTIVO / JUSTIFICAÇÃO</Text>
-          <Text style={styles.motivoTexto}>{reserva.description || 'Sem motivo especificado.'}</Text>
         </View>
       </View>
 
-      {/* Itens Isolados */}
-      {listaItens.length > 0 && (
-        <View style={styles.sectionContainer}>
-          <Text style={styles.sectionTitle}>ITENS INDIVIDUAIS</Text>
-          {listaItens.map((item: any, index: number) => {
-            const quantidade = item.quantity || item.pivot?.quantity || 1;
-            return (
-              <View key={`item-${item.id}-${index}`} style={styles.cardEquipamento}>
-                <View style={styles.detalhesEquipamento}>
-                  <Text style={styles.nomeEquipamento} numberOfLines={1}>{item.name || item.nome}</Text>
-                  <Text style={styles.infoMeta}>Modelo: <Text style={styles.infoMetaValor}>{item.model}</Text></Text>
-                </View>
-                {/* Badge de Quantidade */}
-                <View style={styles.badgeQtd}>
-                  <Text style={styles.badgeQtdText}>{quantidade}x</Text>
-                </View>
-              </View>
-            );
-          })}
-        </View>
-      )}
+      {/* Conteúdo em Scroll com o fundo correto */}
+      <View style={styles.corpoConteudo}>
+        <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
+          
+          {/* Bloco de Resumo Superior */}
+          <View style={styles.cardInfoPrincipal}>
+            
+            
+              <View style={styles.statusRow}>
+  <Text style={styles.tituloDataTitle}>Período de Alocação</Text>
+  
+  {(() => {
+    const uiStatus = getStatusStyles(reserva.reserve_state_id);
+    return (
+      <View style={[styles.badge, { backgroundColor: uiStatus.sc }]}>
+        <Text style={[styles.badgeText, { color: uiStatus.tc }]}>
+          {uiStatus.texto}
+        </Text>
+      </View>
+    );
+  })()}
+</View>
+           
 
-      {/* Kits Reservados */}
-      {listaKits.length > 0 && (
-        <View style={styles.sectionContainer}>
-          <Text style={styles.sectionTitle}>KITS DE EQUIPAMENTO</Text>
-          {listaKits.map((kit: any, index: number) => {
-            const quantidade = kit.quantity || kit.pivot?.quantity || 1;
-            return (
-              <View key={`kit-${kit.id}-${index}`} style={styles.cardEquipamento}>
-                <View style={styles.detalhesEquipamento}>
-                  <Text style={styles.nomeEquipamento} numberOfLines={1}>{kit.name || kit.nome}</Text>
-                  <Text style={styles.descricaoKit} numberOfLines={2}>
-                    {kit.description || "Sem descrição disponível."}
-                  </Text>
+            <Text style={styles.textoDataReal}>
+               {formatarDataCompleta(reserva.start_date, reserva.end_date)}
+            </Text>
+
+            <View style={styles.motivoContainer}>
+              <Text style={styles.labelSecundario}>MOTIVO / JUSTIFICAÇÃO</Text>
+              <Text style={styles.motivoTexto}>{reserva.description || 'Sem motivo especificado.'}</Text>
+            </View>
+          </View>
+
+          {/* Itens Individuais */}
+         {/* Itens Individuais */}
+          {reserva.itens && reserva.itens.length > 0 && (
+            <View style={styles.sectionContainer}>
+              <Text style={styles.sectionTitle}>EQUIPAMENTOS RESERVADOS</Text>
+              {reserva.itens.map((item, index) => (
+                <TouchableHighlight 
+                  key={`item-${item.id}-${index}`} 
+                  style={styles.cardLista}
+                  underlayColor="#E8EAF6" // Cor ao dar clique/foco
+                  onPress={() => router.push(`/(protected)/detalhes/${item.id}`)} // Altera a rota se for diferente
+                >
+                  {/* Contentor interno necessário para manter o layout horizontal */}
+                  <View style={styles.cardContentInternal}>
+                    {item.image ? (
+                      <Image source={{ uri: obterUrlImagem(item.image) }} style={styles.imagemListaMock} />
+                    ) : (
+                      <View style={[styles.imagemListaMock, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#F5F5F5' }]}>
+                        <Ionicons name="camera-outline" size={24} color="#B0BEC5" />
+                      </View>
+                    )}
+
+                    <View style={styles.listaTextoInfo}>
+                      <Text style={styles.cardTitulo} numberOfLines={1}>{item.nome}</Text>
+                      <Text style={styles.cardSubtitulo} numberOfLines={1}>{item.model}</Text>
+                      <Text style={styles.textoPreco}>{Number(item.price_day).toFixed(2)}€ / dia</Text>
+                    </View>
+
+                    <View style={styles.badgeQtd}>
+                      <Text style={styles.badgeQtdText}>{item.quantidade}x</Text>
+                    </View>
+                  </View>
+                </TouchableHighlight>
+              ))}
+            </View>
+          )}
+
+          
+         {/* Kits Reservados */}
+        {reserva.kits && reserva.kits.length > 0 && (
+          <View style={styles.sectionContainer}>
+            <Text style={styles.sectionTitle}>KITS RESERVADOS</Text>
+            {reserva.kits.map((kit, index) => (
+              <TouchableHighlight 
+                key={`kit-${kit.id}-${index}`} 
+                style={styles.cardLista}
+                underlayColor="#E8EAF6" // Cor ao dar clique/foco
+                onPress={() => router.push(`/(protected)/detalhes/${kit.id}`)} // Altera a rota se for diferente
+              >
+                {/* Contentor interno necessário para manter o layout horizontal */}
+                <View style={styles.cardContentInternal}>
+                  {kit.image ? (
+                    <Image source={{ uri: obterUrlImagem(kit.image) }} style={styles.imagemListaMock} />
+                  ) : (
+                    <View style={[styles.imagemListaMock, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#F5F5F5' }]}>
+                      <Ionicons name="camera-outline" size={24} color="#B0BEC5" />
+                    </View>
+                  )}
+
+                  <View style={styles.listaTextoInfo}>
+                    <Text style={styles.cardTitulo} numberOfLines={1}>{kit.nome}</Text>
+                    <Text style={styles.cardSubtitulo} numberOfLines={1}>{kit.description || 'Sem descrição.'}</Text>
+                    <Text style={styles.textoPreco}>{Number(kit.price_day).toFixed(2)}€ / dia</Text>
+                  </View>
+
+                  <View style={styles.badgeQtd}>
+                    <Text style={styles.badgeQtdText}>{kit.quantidade}x</Text>
+                  </View>
                 </View>
-                {/* Badge de Quantidade */}
-                <View style={styles.badgeQtd}>
-                  <Text style={styles.badgeQtdText}>{quantidade}x</Text>
-                </View>
-              </View>
-            );
-          })}
-        </View>
-      )}
-      <View style={{ height: 40 }} />
-    </ScrollView>
+              </TouchableHighlight>
+            ))}
+          </View>
+        )}
+          
+          <View style={{ height: 40 }} />
+        </ScrollView>
+      </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: { 
+    flex: 1, 
+    backgroundColor: '#ffffff' 
+  },
+  header: { 
+    backgroundColor: '#fff', 
+    paddingHorizontal: 20, 
+    paddingTop: 20, 
+    paddingBottom: 13
+  },
+  headerTitle: { 
+    fontSize: 22, 
+    fontWeight: '800', 
+    color: '#0d1f30' 
+  },
+  headerSubtitle: { 
+    fontSize: 12, 
+    color: '#7a94aa', 
+    marginTop: 2 
+  },
+  backButton: {
+    marginRight: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  corpoConteudo: {
+    flex: 1,
+    backgroundColor: '#f4f7fc' 
+  },
   container: { flex: 1, backgroundColor: '#f4f7fc' },
   containerLoading: { flex: 1, backgroundColor: '#f4f7fc', justifyContent: 'center', alignItems: 'center', padding: 20 },
   errorText: { color: '#7a94aa', fontSize: 14, textAlign: 'center' },
-  navHeader: { paddingHorizontal: 16, paddingTop: 16, paddingBottom: 8 },
-  backButton: { alignSelf: 'flex-start', paddingVertical: 4 },
-  backButtonText: { color: '#065294', fontSize: 14, fontWeight: '600' },
-  cardInfoPrincipal: { backgroundColor: '#fff', borderRadius: 14, marginHorizontal: 14, marginTop: 8, marginBottom: 16, padding: 16, borderWidth: 1, borderColor: '#eaf0f8' },
+
+  cardLista: { 
+  flexDirection: 'row', 
+  alignItems: 'center', 
+  backgroundColor: '#FFF', 
+  marginHorizontal: 20, 
+  marginBottom: 10, 
+  borderRadius: 16, 
+  shadowColor: '#000', 
+  shadowOffset: { width: 0, height: 2 }, 
+  shadowOpacity: 0.05, 
+  shadowRadius: 8, 
+  elevation: 2,
+  overflow: 'hidden' // Garante que o efeito de clique respeita as bordas arredondadas
+},
+
+cardContentInternal: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  padding: 12, // O padding passa do cardLista para aqui
+  flex: 1
+},
+badge: { 
+  paddingHorizontal: 10, 
+  paddingVertical: 4, 
+  borderRadius: 12,
+  minWidth: 74,
+  alignItems: 'center'
+},
+badgeText: { 
+  fontSize: 11, 
+  fontWeight: '600'
+},
+  
+  cardInfoPrincipal: { backgroundColor: '#fff', borderRadius: 16, marginHorizontal: 20, marginTop: 15, marginBottom: 15, padding: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 },
   labelSecundario: { fontSize: 11, fontWeight: '700', color: '#8a9fb4', letterSpacing: 0.5 },
   statusRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 10, marginBottom: 6 },
-  tituloDataTitle: { fontSize: 18, fontWeight: '800', color: '#0d1f30' },
-  textoDataReal: { fontSize: 13, color: '#3a5068', fontWeight: '500', marginTop: 4 },
+  tituloDataTitle: { fontSize: 18, fontWeight: '800', color: '#212121' },
+  textoDataReal: { fontSize: 13, color: '#5a7a9a', fontWeight: '500', marginTop: 4 },
   
-  motivoContainer: { marginTop: 15, paddingTop: 15, borderTopWidth: 1, borderTopColor: '#eaf0f8' },
-  motivoTexto: { fontSize: 14, color: '#3a5068', marginTop: 6, lineHeight: 20 },
+  motivoContainer: { marginTop: 15, paddingTop: 15, borderTopWidth: 1, borderTopColor: '#e2e8f0' },
+  motivoTexto: { fontSize: 14, color: '#212121', marginTop: 6, lineHeight: 20 },
 
-  sectionContainer: { paddingHorizontal: 14, marginBottom: 12 },
-  sectionTitle: { fontSize: 11, fontWeight: '700', color: '#3a5068', letterSpacing: 0.4, marginBottom: 10 },
-  cardEquipamento: { backgroundColor: '#fff', borderRadius: 14, borderWidth: 1, borderColor: '#eaf0f8', padding: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
-  detalhesEquipamento: { flex: 1, justifyContent: 'center', paddingRight: 10 },
-  nomeEquipamento: { fontSize: 14, fontWeight: '700', color: '#0d1f30', marginBottom: 4 },
-  infoMeta: { fontSize: 11, color: '#8a9fb4', marginTop: 2 },
-  infoMetaValor: { color: '#3a5068', fontWeight: '600' },
-  descricaoKit: { fontSize: 12, color: '#5a7a9a', lineHeight: 16, marginTop: 2 },
+  sectionContainer: { marginBottom: 15 },
+  sectionTitle: { fontSize: 12, fontWeight: 'bold', color: '#9E9E9E', marginHorizontal: 20, marginBottom: 12, letterSpacing: 0.5 },
   
-  badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, borderWidth: 1, minWidth: 85, alignItems: 'center' },
-  badgeText: { fontSize: 10, fontWeight: '700', textTransform: 'uppercase' },
+  // Estilo Identitário Horizontal (Igual ao catálogo)
+  imagemListaMock: { width: 65, height: 65, backgroundColor: '#E8EAF6', borderRadius: 12, marginRight: 15 },
+  listaTextoInfo: { flex: 1, justifyContent: 'center' },
+  cardTitulo: { fontSize: 15, fontWeight: 'bold', color: '#212121', marginBottom: 2 },
+  cardSubtitulo: { fontSize: 12, color: '#757575', marginBottom: 4 },
+  textoPreco: { fontSize: 12, fontWeight: '700', color: '#065294' },
   
-  badgeQtd: { backgroundColor: '#f4f7fc', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8, borderWidth: 1, borderColor: '#eaf0f8' },
-  badgeQtdText: { color: '#065294', fontWeight: 'bold', fontSize: 14 }
+  badgeEstado: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, backgroundColor: '#E8F5E9' },
+  badgeEstadoText: { fontSize: 11, fontWeight: '700', color: '#2E7D32', textTransform: 'uppercase' },
+  
+  badgeQtd: { backgroundColor: '#f0f3f8', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8 },
+  badgeQtdText: { color: '#065294', fontWeight: 'bold', fontSize: 13 }
 });

@@ -1,5 +1,4 @@
 import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -61,7 +60,6 @@ export default function DetalhesEquipamento() {
 
   const carregarDetalhes = async () => {
     try {
-      const token = await AsyncStorage.getItem('userToken');
       const tipoParam = tipo || 'item'; // fallback seguro
 
       let endpoint = `/item/${id}?tipo=${tipoParam}`;
@@ -69,9 +67,7 @@ export default function DetalhesEquipamento() {
         endpoint += `&start_date=${reserva.dataInicio}&end_date=${reserva.dataFim}`;
       }
 
-      const response = await api.get(endpoint, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await api.get(endpoint);
 
       if (response.data.status === 'success') {
         setItem(response.data.data);
@@ -79,9 +75,7 @@ export default function DetalhesEquipamento() {
 
       // Datas ocupadas / esgotadas do calendário
       try {
-        const datasResponse = await api.get(`/item/${id}/datas-esgotadas?tipo=${tipoParam}`, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
+        const datasResponse = await api.get(`/item/${id}/datas-esgotadas?tipo=${tipoParam}`);
         if (datasResponse.data.status === 'success') {
           setDatasOcupadas(datasResponse.data.data.dias || {});
           setTotalUnidades(datasResponse.data.data.total || 0);

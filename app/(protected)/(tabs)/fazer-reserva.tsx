@@ -1,5 +1,4 @@
 import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { useRouter } from 'expo-router';
 import { default as React, useEffect, useState } from 'react';
@@ -66,10 +65,7 @@ export default function FazerReserva() {
 
   const carregarCentrosDeCusto = async () => {
     try {
-      const token = await AsyncStorage.getItem('userToken');
-      const response = await api.get('/centros-custo', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await api.get('/centros-custo');
       if (response.data.status === 'success') {
         setCentrosCustoDB(response.data.data);
       }
@@ -135,7 +131,7 @@ export default function FazerReserva() {
 
      setSubmitting(true);
     try {
-      const token = await AsyncStorage.getItem('userToken');
+      
       
       // 1. Separar os itens e os kits em dois arrays distintos como o teu Laravel pede
       const itensPuros = reserva.itens
@@ -165,9 +161,7 @@ export default function FazerReserva() {
       };
 
       // ATENÇÃO: Confirma se o URL aqui bate certo com o teu api.php
-      const response = await api.post('/reservas/criar', dadosParaEnviar, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await api.post('/reservas/criar', dadosParaEnviar);
 
       if (response.data.status === 'success') {
         Alert.alert('Sucesso', 'A tua requisição foi submetida com sucesso!', [

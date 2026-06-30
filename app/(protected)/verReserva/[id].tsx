@@ -117,7 +117,7 @@ export default function DetalheReservaPage() {
       case 9: 
         return { texto: 'Devolvido (Fora do Prazo)', sc: '#E8F5E9', tc: '#2E7D32' };
       case 10:
-        return { texto: 'Cancelada', sc: '#FFF5F5', tc: '#c62828' };
+        return { texto: 'Cancelada', sc: '#F0F0F0', tc: '#9E9E9E' };
       default:
         return { texto: 'Desconhecido', sc: '#F0F0F0', tc: '#9E9E9E' };
     }
@@ -164,20 +164,30 @@ export default function DetalheReservaPage() {
 
       {/* Header */}
       <View style={styles.header}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color="#0d1f30" />
-          </TouchableOpacity>
-          <View>
+        <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flex: 1 }}>
+          
+          {/* Bloco de Títulos (coluna) */}
+          <View style={{ flex: 1, marginRight: 10 }}>
             <Text style={styles.headerTitle}>Reserva</Text>
             <Text style={styles.headerSubtitle}>Detalhes da requisição</Text>
           </View>
+
+          {/* Botão Cancelar condicional movido para o Header */}
+          {reserva.reserve_state_id === 1 && (
+            <TouchableOpacity 
+              style={styles.btnLimparTudo} 
+              onPress={handleCancelarReserva}
+            >
+              <Text style={styles.btnLimparTudoText}>Cancelar</Text>
+            </TouchableOpacity>
+          )}
+
         </View>
       </View>
 
       {/* Corpo com Scroll */}
       <View style={styles.corpoConteudo}>
-        <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
+        <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
           
           {/* Card Info Principal */}
           <View style={styles.cardInfoPrincipal}>
@@ -208,7 +218,7 @@ export default function DetalheReservaPage() {
           {/* Equipamentos Reservados */}
           {reserva.itens && reserva.itens.length > 0 && (
             <View style={styles.sectionContainer}>
-              <Text style={styles.sectionTitle}>EQUIPAMENTOS RESERVADOS</Text>
+              <Text style={styles.sectionTitle}>ITENS RESERVADOS</Text>
               {reserva.itens.map((item, index) => (
                 <TouchableHighlight 
                   key={`item-${item.id}-${index}`} 
@@ -276,15 +286,6 @@ export default function DetalheReservaPage() {
             </View>
           )}
 
-          {/* Botão de Cancelamento condicional */}
-          {reserva.reserve_state_id === 1 && (
-            <TouchableOpacity 
-              style={styles.botaoCancelar} 
-              onPress={handleCancelarReserva}
-            >
-              <Text style={styles.textoBotaoCancelar}>Cancelar Reserva</Text>
-            </TouchableOpacity>
-          )}
 
           <View style={{ height: 40 }} />
         </ScrollView>
@@ -295,9 +296,22 @@ export default function DetalheReservaPage() {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#ffffff' },
-  header: { backgroundColor: '#fff', paddingHorizontal: 20, paddingTop: 20, paddingBottom: 13 },
+  header: { backgroundColor: '#fff', paddingHorizontal: 20, paddingTop: 20, paddingBottom: 13, flexDirection: 'row', },
   headerTitle: { fontSize: 22, fontWeight: '800', color: '#0d1f30' },
   headerSubtitle: { fontSize: 12, color: '#7a94aa', marginTop: 2 },
+  btnLimparTudo: { 
+    paddingVertical: 6, 
+    paddingHorizontal: 12, 
+    borderRadius: 8, 
+    backgroundColor: '#FFEBEE',  
+    borderWidth: 1, 
+    borderColor: '#ffcdd2', 
+  },
+  btnLimparTudoText: { 
+    color: '#E53935', 
+    fontWeight: 'bold', 
+    fontSize: 13 
+  },
   backButton: { marginRight: 4, justifyContent: 'center', alignItems: 'center' },
   corpoConteudo: { flex: 1, backgroundColor: '#f4f7fc' },
   containerLoading: { flex: 1, backgroundColor: '#f4f7fc', justifyContent: 'center', alignItems: 'center', padding: 20 },

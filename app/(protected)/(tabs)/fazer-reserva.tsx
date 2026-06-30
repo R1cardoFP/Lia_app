@@ -3,11 +3,11 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { useRouter } from 'expo-router';
 import { default as React, useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Modal, ScrollView, StatusBar, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Image, Modal, ScrollView, StatusBar, StyleSheet, Switch, Text, TextInput, TouchableHighlight, TouchableOpacity, View } from 'react-native';
 import { Calendar, LocaleConfig } from 'react-native-calendars';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useReserva } from '../../../contexts/reservaContext';
-import api from '../../../services/api';
+import api, { API_URL } from '../../../services/api';
 
 // Configuração do Calendário para Português
 LocaleConfig.locales['pt'] = {
@@ -55,6 +55,11 @@ export default function FazerReserva() {
   const insets = useSafeAreaInsets();
   const tabBarHeight = useBottomTabBarHeight();
 
+  const obterUrlImagem = (caminho?: string | null): string | undefined => {
+    if (!caminho) return undefined;
+    return `${API_URL}/${caminho.startsWith('/') ? caminho.substring(1) : caminho}`;
+  };
+
   useEffect(() => {
     carregarCentrosDeCusto();
   }, []);
@@ -97,15 +102,30 @@ export default function FazerReserva() {
   };
 
   const handleCancelarReserva = () => {
-    Alert.alert(
-      "Cancelar Reserva",
-      "Tens a certeza que queres cancelar? Todos os dados e itens escolhidos serão limpos.",
-      [
-        { text: "Não", style: "cancel" },
-        { text: "Sim, Cancelar", style: "destructive", onPress: limparReserva }
-      ]
-    );
-  };
+      Alert.alert(
+        "Cancelar Reserva",
+        "Tens a certeza que queres cancelar? Todos os dados e itens escolhidos serão limpos.",
+        [
+          { text: "Não", style: "cancel" },
+          { 
+            text: "Sim, Cancelar", 
+            style: "destructive", 
+            onPress: () => {
+              // 1. Limpa os estados locais do formulário
+              setDataInicio('');
+              setDataFim('');
+              setMotivo('');
+              setCentroCusto(null);
+              setIsCiclica(false);
+              setDiaCiclico(null);
+
+              // 2. Limpa o estado global (Contexto)
+              limparReserva();
+            } 
+          }
+        ]
+      );
+    };
 
   const handleConfirmarReservaFinal = async () => {
     if (reserva.itens.length === 0) {
@@ -182,7 +202,13 @@ export default function FazerReserva() {
 
         {/* CORPO COM FUNDO AZUL ATÉ ÀS TABS */}
         <View style={styles.corpoFormulario}>
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContainer}>
+          <ScrollView 
+            showsVerticalScrollIndicator={false} 
+            contentContainerStyle={[
+              styles.scrollContainer, 
+              { paddingBottom: tabBarHeight + insets.bottom + 10 } // <--- Garante espaço dinâmico extra no fim
+            ]}
+          >
             <View style={styles.containerFormulario}>
               
               {/* CAMPOS DE DATA LADO A LADO */}
@@ -365,7 +391,7 @@ export default function FazerReserva() {
      <View style={styles.headerCarrinho}>
         <View style={{ flex: 1, marginRight: 10 }}>
           <Text style={styles.tituloPrincipal}>A tua Reserva</Text>
-          <Text style={[styles.subtituloPrincipal, { color: '#00a385' }]} numberOfLines={1}>
+          <Text style={[styles.subtituloPrincipal, { color: '#00a385',fontWeight: '600' }]} numberOfLines={1}>
             Período: {reserva.dataInicio} a {reserva.dataFim}
           </Text>
         </View>
@@ -377,7 +403,7 @@ export default function FazerReserva() {
       <FlatList
         data={reserva.itens}
         keyExtractor={(item, index) => String(item.id) + (item.is_kit ? '-kit' : '-item') + index}
-        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 100 }}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 50 }}
        ListHeaderComponent={() => (
         <View style={styles.cardInfoPrincipal}>
           {/* Esta parte do Motivo aparece sempre */}
@@ -397,58 +423,94 @@ export default function FazerReserva() {
       )}
 
 
-
-
-
-
-
-
-
-
         ListEmptyComponent={() => (
           <View style={styles.carrinhoVazioContainer}>
-            <Ionicons name="cart-outline" size={50} color="#B0BEC5" />
+            <Ionicons name="cart-outline" size={50} color="#9E9E9E" />
             <Text style={styles.carrinhoVazioTexto}>Ainda não adicionaste nenhum equipamento.</Text>
             <TouchableOpacity style={styles.btnIrAoCatalogo} onPress={() => router.push('/catalogo')}>
               <Text style={styles.btnIrAoCatalogoText}>Ir para o Catálogo</Text>
             </TouchableOpacity>
           </View>
         )}
-        renderItem={({ item }) => (
-          <View style={styles.cardItemCarrinho}>
-            <View style={styles.itemCarrinhoInfo}>
-              <Text style={styles.itemCarrinhoNome} numberOfLines={1}>{item.nome}</Text>
-              <Text style={styles.itemCarrinhoSub}>{item.model} • Qtd: <Text style={{ fontWeight: 'bold', color: '#065294' }}>{item.quantidadeSelecionada}</Text></Text>
-            </View>
-            <View style={styles.rowAcoesCarrinho}>
-              <Text style={styles.itemCarrinhoPreco}>{item.preco || '20,00'}€/dia</Text>
-              <TouchableOpacity style={styles.btnRemoverItem} onPress={() => removerItem(item.id, item.is_kit)}>
-                <Ionicons name="trash-outline" size={20} color="#E53935" />
-              </TouchableOpacity>
-            </View>
-          </View>
-        
+
+
+        ListFooterComponent={() => (
+    reserva.itens.length > 0 ? (
+      <TouchableOpacity 
+        style={[styles.btnIniciar, submitting && { opacity: 0.7 }]} 
+        onPress={handleConfirmarReservaFinal}
+        disabled={submitting}
+      >
+        {submitting ? (
+          <ActivityIndicator color="#FFF" />
+        ) : (
+          <>
+            <Ionicons name="checkmark-circle-outline" size={22} color="#FFF" style={{ marginRight: 8 }} />
+            <Text style={styles.btnIniciarText}>Confirmar e Submeter Reserva</Text>
+          </>
         )}
+      </TouchableOpacity>
+    ) : null
+  )}
+
+
+        renderItem={({ item, index }) => {
+          // Determina se é necessário exibir o título da secção acima do primeiro elemento de cada grupo
+          const isFirstItem = !item.is_kit && index === 0;
+          const isFirstKit = item.is_kit && (index === 0 || !reserva.itens[index - 1]?.is_kit);
+
+          return (
+            <View style={{ marginBottom: 2 }}>
+              {/* Título de Secção para Equipamentos */}
+              {isFirstItem && (
+                <Text style={styles.sectionTitle}>ITENS ADICIONADOS</Text>
+              )}
+
+              {/* Título de Secção para Kits */}
+              {isFirstKit && (
+                <Text style={[styles.sectionTitle, { marginTop: 15 }]}>KITS ADICIONADOS</Text>
+              )}
+
+              {/* Card no formato exato da página de Detalhes */}
+              <TouchableHighlight 
+                key={`${item.is_kit ? 'kit' : 'item'}-${item.id}-${index}`} 
+                style={styles.cardLista}
+                underlayColor="#E8EAF6"
+                onPress={() => router.push(`/detalhes/${item.id}?tipo=${item.is_kit ? 'kit' : 'item'}`)}
+              >
+                <View style={styles.cardContentInternal}>
+
+                  {item.image ? (
+                    <Image source={{ uri: obterUrlImagem(item.image) }} style={styles.imagemListaMock} />
+                  ) : (
+                    <View style={[styles.imagemListaMock, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#F5F5F5' }]}>
+                      <Ionicons name="camera-outline" size={24} color="#B0BEC5" />
+                    </View>
+                  )}
+
+                  <View style={styles.listaTextoInfo}>
+                    <Text style={styles.cardTitulo} numberOfLines={1}>{item.nome}</Text>
+                    <Text style={styles.cardSubtitulo} numberOfLines={1}>{item.model || item.description || 'Sem descrição.'}</Text>
+                    <Text style={styles.textoPreco}>{Number(item.preco || item.price_day || 20).toFixed(2)}€ / dia</Text>
+                  </View>
+
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                    <View style={styles.badgeQtd}>
+                      <Text style={styles.badgeQtdText}>{item.quantidadeSelecionada}x</Text>
+                    </View>
+                    
+                    {/* Mantemos o botão de remover original integrado no novo estilo do card */}
+                    <TouchableOpacity style={styles.btnRemoverItem} onPress={() => removerItem(item.id, item.is_kit)}>
+                      <Ionicons name="trash-outline" size={20} color="#E53935" />
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </TouchableHighlight>
+            </View>
+          );
+        }}
       />
 
-      {reserva.itens.length > 0 && (
-         <View style={[styles.footerFixo, { bottom: tabBarHeight }]}>
-          <TouchableOpacity 
-            style={[styles.btnConfirmarFinal, submitting && { opacity: 0.7 }]} 
-            onPress={handleConfirmarReservaFinal}
-            disabled={submitting}
-          >
-            {submitting ? (
-              <ActivityIndicator color="#FFF" />
-            ) : (
-              <>
-                <Ionicons name="checkmark-circle-outline" size={22} color="#FFF" style={{ marginRight: 8 }} />
-                <Text style={styles.btnConfirmarFinalText}>Confirmar e Submeter Reserva</Text>
-              </>
-            )}
-          </TouchableOpacity>
-        </View>
-      )}
        </View>
     </SafeAreaView>
 
@@ -456,9 +518,7 @@ export default function FazerReserva() {
 }
 
 const styles = StyleSheet.create({
-
-
-safeArea: { 
+  safeArea: { 
     flex: 1, 
     backgroundColor: '#ffffff' 
   },
@@ -467,23 +527,86 @@ safeArea: {
     paddingHorizontal: 20, 
     paddingTop: 20, 
     paddingBottom: 13,
-    
   },
   corpoFormulario: {
     flex: 1,
-    backgroundColor: '#f4f7fc', // Garante que o azul clarinho vai até às tabs
+    backgroundColor: '#f4f7fc',
   },
   scrollContainer: { 
-    paddingBottom: 40,
+    paddingBottom: 10,
     paddingTop: 35,
   },
   containerFormulario: { 
     flexDirection: 'column', 
     gap: 14,
-    paddingHorizontal: 20 // Mantém os paddings dos inputs perfeitos nas laterais
+    paddingHorizontal: 20
   },
-
-  
+  cardLista: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    backgroundColor: '#FFF', 
+    marginBottom: 10, 
+    borderRadius: 16, 
+    shadowColor: '#000', 
+    shadowOffset: { width: 0, height: 2 }, 
+    shadowOpacity: 0.05, 
+    shadowRadius: 8, 
+    elevation: 2,
+    overflow: 'hidden'
+  },
+  cardContentInternal: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    padding: 12, 
+    flex: 1 
+  },
+  sectionTitle: { 
+    fontSize: 12, 
+    fontWeight: 'bold', 
+    color: '#9E9E9E', 
+    marginBottom: 12, 
+    letterSpacing: 0.5 
+  },
+  imagemListaMock: { 
+    width: 65, 
+    height: 65, 
+    backgroundColor: '#E8EAF6', 
+    borderRadius: 12, 
+    marginRight: 15 
+  },
+  listaTextoInfo: { 
+    flex: 1, 
+    justifyContent: 'center' 
+  },
+  cardTitulo: { 
+    fontSize: 15, 
+    fontWeight: 'bold', 
+    color: '#212121', 
+    marginBottom: 2 
+  },
+  cardSubtitulo: { 
+    fontSize: 12, 
+    color: '#757575', 
+    marginBottom: 4 
+  },
+  textoPreco: { 
+    fontSize: 12, 
+    fontWeight: '700', 
+    color: '#065294' 
+  },
+  badgeQtd: { 
+    backgroundColor: '#f4f7fc', 
+    paddingHorizontal: 12, 
+    paddingVertical: 8, 
+    borderRadius: 8, 
+    borderWidth: 1, 
+    borderColor: '#eaf0f8' 
+  },
+  badgeQtdText: { 
+    color: '#065294', 
+    fontWeight: 'bold', 
+    fontSize: 14 
+  },
   tituloPrincipal: { 
     fontSize: 22,          
     fontWeight: '800',     
@@ -493,12 +616,8 @@ safeArea: {
   subtituloPrincipal: { 
     fontSize: 12,          
     color: '#7a94aa',      
-    marginTop: 2 ,
-    fontWeight: '600'
+    marginTop: 2,
   },
-  
-
-  // ESTILO DOS CAMPOS DO REGISTO (LIGEIRAMENTE MAIORES)
   label: { 
     fontSize: 12, 
     fontWeight: '600', 
@@ -549,58 +668,81 @@ safeArea: {
     flexDirection: 'row', 
     gap: 12, 
   }, 
-  btnP: { 
-    backgroundColor: '#00a385', 
-    borderRadius: 8, 
-    paddingVertical: 15, 
-    flexDirection: 'row',
-    alignItems: 'center', 
-    justifyContent: 'center', 
-    marginTop: 15, 
-  }, 
-  btnText: { 
-    color: '#fff', 
-    fontSize: 15, 
+  labelSecundario: { 
+    fontSize: 11, 
     fontWeight: '700', 
+    color: '#8a9fb4', 
+    letterSpacing: 0.5 
   },
-  labelSecundario: { fontSize: 11, fontWeight: '700', color: '#8a9fb4', letterSpacing: 0.5 },
-  tituloDataTitle: { fontSize: 18, fontWeight: '800', color: '#212121' },
-   motivoContainer: { marginTop: 15, paddingTop: 15, borderTopWidth: 1, borderTopColor: '#e2e8f0' },
-  motivoTexto: { fontSize: 14, color: '#212121', marginTop: 6, lineHeight: 20 },
-  textoMotivo: { fontSize: 13, color: '#5a7a9a', fontWeight: '500', marginTop: 4 },
-  rowDatas: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 5 },
-  inputGroup: { marginBottom: 18 },
-
-  input: { backgroundColor: '#F5F7F9', borderWidth: 1, borderColor: '#E0E6ED', borderRadius: 12, paddingHorizontal: 15, height: 48, fontSize: 15, color: '#212121' },
-  
-  dropdownInput: { flexDirection: 'row', backgroundColor: '#F5F7F9', borderWidth: 1, borderColor: '#E0E6ED', borderRadius: 12, paddingHorizontal: 15, height: 48, alignItems: 'center', justifyContent: 'space-between' },
-  dropdownText: { fontSize: 15, color: '#212121' },
-  dropdownPlaceholder: { fontSize: 15, color: '#9E9E9E' },
-
-  rowSwitch: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#ffffff', padding: 15, borderRadius: 12, marginBottom: 25 },
-  labelSwitch: { fontSize: 15, fontWeight: 'bold', color: '#212121' },
-  sublabelSwitch: { fontSize: 12, color: '#757575', marginTop: 2, paddingRight: 10 },
+  tituloDataTitle: { 
+    fontSize: 18, 
+    fontWeight: '800', 
+    color: '#212121' 
+  },
+  motivoContainer: { 
+    marginTop: 15, 
+    paddingTop: 15, 
+    borderTopWidth: 1, 
+    borderTopColor: '#e2e8f0' 
+  },
+  motivoTexto: { 
+    fontSize: 14, 
+    color: '#212121', 
+    marginTop: 6, 
+    lineHeight: 20 
+  },
+  textoMotivo: { 
+    fontSize: 13, 
+    color: '#5a7a9a', 
+    fontWeight: '500', 
+    marginTop: 4 
+  },
+  dropdownText: { 
+    fontSize: 15, 
+    color: '#212121' 
+  },
+  dropdownPlaceholder: { 
+    fontSize: 15, 
+    color: '#9E9E9E' 
+  },
+  rowSwitch: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    backgroundColor: '#ffffff', 
+    padding: 15, 
+    borderRadius: 12, 
+    marginBottom: 25 
+  },
+  labelSwitch: { 
+    fontSize: 15, 
+    fontWeight: 'bold', 
+    color: '#212121' 
+  },
+  sublabelSwitch: { 
+    fontSize: 12, 
+    color: '#757575', 
+    marginTop: 2, 
+    paddingRight: 10 
+  },
   btnIniciar: { 
-    backgroundColor: '#065294',   // Mantém a tua cor azul original
-    borderRadius: 8,              // Arredondamento igual ao do registo
-    paddingVertical: 15,          // Altura baseada em padding igual ao do registo 
+    backgroundColor: '#065294',   
+    borderRadius: 8,              
+    paddingVertical: 15,          
     flexDirection: 'row',
     alignItems: 'center', 
     justifyContent: 'center', 
-    marginTop: 15, 
+    marginTop: 20, 
   }, 
   btnIniciarText: { 
     color: '#FFF', 
-    fontSize: 15,                 // Tamanho da fonte igual ao do registo
-    fontWeight: '700',            // Peso da fonte igual ao do registo
+    fontSize: 15,                 
+    fontWeight: '700',            
   },
-  
   cardInfoPrincipal: { 
     backgroundColor: '#fff', 
     borderRadius: 16, 
-    marginRight: 10,  
-    marginTop: 15, 
-    marginBottom: 15, 
+    marginTop: 16, 
     padding: 16, 
     shadowColor: '#000', 
     shadowOffset: { width: 0, height: 2 }, 
@@ -608,33 +750,99 @@ safeArea: {
     shadowRadius: 8, 
     elevation: 2 
   },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'center', alignItems: 'center', padding: 20 },
-  modalContent: { backgroundColor: '#FFF', borderRadius: 16, padding: 20, width: '100%', maxWidth: 360, elevation: 5, maxHeight: '80%' },
-  modalTitle: { fontSize: 18, fontWeight: 'bold', color: '#212121', marginBottom: 15, textAlign: 'center' },
-  modalOpcao: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 15, borderBottomWidth: 1, borderBottomColor: '#F0F0F0', alignItems: 'center' },
-  modalOpcaoText: { fontSize: 16, color: '#546E7A', flex: 1 },
-  modalOpcaoAtiva: { color: '#065294', fontWeight: 'bold' },
-  modalCancelar: { marginTop: 15, paddingVertical: 10, alignItems: 'center' },
-  modalCancelarText: { fontSize: 16, fontWeight: 'bold', color: '#E53935' },
-
-  headerCarrinho: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20, backgroundColor: '#FFF' },
-  subtituloResumo: { fontSize: 14, color: '#2E7D32', fontWeight: '600', marginTop: 2 },
-  btnLimparTudo: { paddingVertical: 6, paddingHorizontal: 12, borderRadius: 8, backgroundColor: '#FFEBEE',  borderWidth: 1, borderColor: '#ffcdd2', },
-  btnLimparTudoText: { color: '#E53935', fontWeight: 'bold', fontSize: 13 },
-  cardInfosFixas: { backgroundColor: '#ECEFF1', padding: 15, borderRadius: 12, marginVertical: 15 },
-  infoFixaTexto: { fontSize: 14, color: '#37474F', marginBottom: 4 },
-  carrinhoVazioContainer: { alignItems: 'center', marginTop: 60, padding: 20 },
-  carrinhoVazioTexto: { fontSize: 15, color: '#78909C', textAlign: 'center', marginTop: 15, marginBottom: 20 },
-  btnIrAoCatalogo: { backgroundColor: '#065294', paddingHorizontal: 20, paddingVertical: 12, borderRadius: 10 },
-  btnIrAoCatalogoText: { color: '#FFF', fontWeight: 'bold' },
-  cardItemCarrinho: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: '#FFF', padding: 15, borderRadius: 12, marginBottom: 10, elevation: 1, shadowColor: '#000', shadowOpacity: 0.02, shadowRadius: 5 },
-  itemCarrinhoInfo: { flex: 1, marginRight: 10 },
-  itemCarrinhoNome: { fontSize: 16, fontWeight: 'bold', color: '#212121' },
-  itemCarrinhoSub: { fontSize: 13, color: '#757575', marginTop: 2 },
-  rowAcoesCarrinho: { alignItems: 'flex-end' },
-  itemCarrinhoPreco: { fontSize: 14, fontWeight: '600', color: '#424242', marginBottom: 6 },
-  btnRemoverItem: { padding: 4 },
-  footerFixo: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: '#FFF', padding: 20, borderTopWidth: 1, borderTopColor: '#EEEEEE' },
-  btnConfirmarFinal: { backgroundColor: '#2E7D32', height: 54, borderRadius: 12, flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
-  btnConfirmarFinalText: { color: '#FFF', fontSize: 16, fontWeight: 'bold' }
+  modalOverlay: { 
+    flex: 1, 
+    backgroundColor: 'rgba(0, 0, 0, 0.5)', 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    padding: 20 
+  },
+  modalContent: { 
+    backgroundColor: '#FFF', 
+    borderRadius: 16, 
+    padding: 20, 
+    width: '100%', 
+    maxWidth: 360, 
+    elevation: 5, 
+    maxHeight: '80%' 
+  },
+  modalTitle: { 
+    fontSize: 18, 
+    fontWeight: 'bold', 
+    color: '#212121', 
+    marginBottom: 15, 
+    textAlign: 'center' 
+  },
+  modalOpcao: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    paddingVertical: 15, 
+    borderBottomWidth: 1, 
+    borderBottomColor: '#F0F0F0', 
+    alignItems: 'center' 
+  },
+  modalOpcaoText: { 
+    fontSize: 16, 
+    color: '#546E7A', 
+    flex: 1 
+  },
+  modalOpcaoAtiva: { 
+    color: '#065294', 
+    fontWeight: 'bold' 
+  },
+  modalCancelar: { 
+    marginTop: 15, 
+    paddingVertical: 10, 
+    alignItems: 'center' 
+  },
+  modalCancelarText: { 
+    fontSize: 16, 
+    fontWeight: 'bold', 
+    color: '#E53935' 
+  },
+  headerCarrinho: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    padding: 20, 
+    backgroundColor: '#FFF' 
+  },
+  btnLimparTudo: { 
+    paddingVertical: 6, 
+    paddingHorizontal: 12, 
+    borderRadius: 8, 
+    backgroundColor: '#FFEBEE',  
+    borderWidth: 1, 
+    borderColor: '#ffcdd2', 
+  },
+  btnLimparTudoText: { 
+    color: '#E53935', 
+    fontWeight: 'bold', 
+    fontSize: 13 
+  },
+  carrinhoVazioContainer: { 
+    alignItems: 'center', 
+    marginTop: 60, 
+    padding: 20 
+  },
+  carrinhoVazioTexto: { 
+    fontSize: 15, 
+    color: '#9E9E9E', 
+    textAlign: 'center', 
+    marginTop: 15, 
+    marginBottom: 20 
+  },
+  btnIrAoCatalogo: { 
+    backgroundColor: '#065294', 
+    paddingHorizontal: 20, 
+    paddingVertical: 12, 
+    borderRadius: 10 
+  },
+  btnIrAoCatalogoText: { 
+    color: '#FFF', 
+    fontWeight: 'bold' 
+  },
+  btnRemoverItem: { 
+    padding: 4 
+  }
 });

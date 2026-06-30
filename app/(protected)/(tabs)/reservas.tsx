@@ -74,10 +74,10 @@ export default function Reservas() {
       case 3: // Não Autorizada
         return { grupo: 'Recusadas', texto: 'Recusada', sc: 'rgba(192, 80, 96, 0.12)', tc: '#c05060' }; 
       case 10:
-      return { texto: 'Cancelada', sc: 'rgba(192, 80, 96, 0.12)', tc: '#c05060' };
+      return { grupo: 'Canceladas', texto: 'Cancelada', sc: '#F0F0F0', tc: '#9E9E9E' };
 
       default:
-        return { grupo: 'Todas', texto: 'Desconhecido', sc: '#F0F0F0', tc: '#9E9E9E' };
+        return { grupo: 'Todas', texto: 'Desconhecido', sc: '#F0F0F0', tc: '#9E9E9E'  };
     }
   };
   const formatarDataLateral = (dataString: string) => {
@@ -134,8 +134,8 @@ export default function Reservas() {
         <Text style={styles.headerSubtitle}>Histórico de requisições</Text>
         
         {/* Filtros / Chips */}
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsContainer}>
-          {['Todas', 'Ativas', 'Concluídas', 'Recusadas'].map((item) => (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsContainer} >
+          {['Todas', 'Ativas', 'Concluídas', 'Recusadas', 'Canceladas'].map((item) => (
             <TouchableOpacity 
               key={item} 
               style={[styles.chip, filtro === item && styles.chipActive]} 
@@ -152,6 +152,7 @@ export default function Reservas() {
         <ScrollView 
           style={{ flex: 1 }}
           showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 90 }}
           refreshControl={
             <RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={['#065294']} />
           }
@@ -309,7 +310,7 @@ const styles = StyleSheet.create({
   },
   listaContainer: { 
     paddingHorizontal: 14, 
-    paddingBottom: 20 
+    paddingBottom: 30 
   },
   listaTitle: { 
     fontSize: 11, 

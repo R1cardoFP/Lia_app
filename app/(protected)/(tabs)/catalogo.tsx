@@ -245,6 +245,23 @@ export default function Catalogo() {
               </ScrollView>
             </View>
 
+          {temReservaAtiva && (
+  <TouchableOpacity 
+    style={styles.legendaReservaContainer}
+    onPress={() => router.push('/fazer-reserva')} // Ajusta o caminho '/reservas' para a tua rota real
+    activeOpacity={0.7}
+  >
+    <Ionicons name="calendar-outline" size={20} color="#00a385" style={styles.legendaIcone} />
+    
+    <Text style={styles.legendaReservaTexto}>
+      Equipamentos disponíveis para reserva no período de {reserva?.dataInicio} a {reserva?.dataFim}
+    </Text>
+
+    {/* Ícone na ponta direita para indicar que é um botão clicável */}
+    <Ionicons name="chevron-forward" size={16} color="#00a385" style={{ marginLeft: 8 }} />
+  </TouchableOpacity>
+)}
+
             {/* Mostra um mini-loader discreto abaixo do bloco branco se estiver a carregar */}
             {loadingInitial && (
               <ActivityIndicator size="small" color="#065294" style={{ marginVertical: 15 }} />
@@ -273,7 +290,10 @@ export default function Catalogo() {
                       )}
                       <Text style={styles.cardTitulo} numberOfLines={1}>{kit.nome || kit.name}</Text>
                       <Text style={styles.cardSubtitulo} numberOfLines={1}>{kit.description || kit.model}</Text>
+                      <Text style={styles.textoPreco}>{Number(kit.price_day || 0).toFixed(2)}€ / dia</Text>
+                      <View  style={{ marginBottom: 3 }}>
                       <BadgeDisponibilidade quantidade={kit.kit_unities_count || kit.item_unities_count || 0} />
+                      </View>
                     </View>
                   </TouchableHighlight>
                 ))}
@@ -308,7 +328,9 @@ export default function Catalogo() {
               <View style={styles.listaTextoInfo}>
                 <Text style={styles.cardTitulo} numberOfLines={1}>{item.nome}</Text>
                 <Text style={styles.cardSubtitulo} numberOfLines={1}>{item.model}</Text>
+                <Text style={styles.textoPreco}>{Number(item.price_day || 0).toFixed(2)}€ / dia</Text>
               </View>
+              
               <BadgeDisponibilidade quantidade={item.item_unities_count || 0} />
             </View>
           </TouchableHighlight>
@@ -371,7 +393,7 @@ const styles = StyleSheet.create({
     marginTop: 15, 
   },
  
-  
+  textoPreco: { fontSize: 12, fontWeight: '700', color: '#065294' },
   saudacao: { fontSize: 12, color: '#9E9E9E', fontWeight: 'bold' },
   nomeUtilizador: { fontSize: 20, fontWeight: 'bold', color: '#212121' },
   avatarContainer: { width: 45, height: 45, borderRadius: 22.5, backgroundColor: '#065294', justifyContent: 'center', alignItems: 'center', overflow: 'hidden' }, 
@@ -408,11 +430,34 @@ const styles = StyleSheet.create({
   imagemDestaqueMock: { width: '100%', height: 100, backgroundColor: '#E8EAF6', borderRadius: 10, marginBottom: 12 },
   
   cardTitulo: { fontSize: 15, fontWeight: 'bold', color: '#212121', marginBottom: 4 },
-  cardSubtitulo: { fontSize: 12, color: '#757575', marginBottom: 10 },
+  cardSubtitulo: { fontSize: 12, color: '#757575', marginBottom: 4 },
   cardLista: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', marginHorizontal: 0, marginBottom: 0, padding: 12, borderRadius: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 },
   imagemListaMock: { width: 60, height: 60, backgroundColor: '#E8EAF6', borderRadius: 10, marginRight: 15 },
   listaTextoInfo: { flex: 1, justifyContent: 'center' },
   badge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8, alignSelf: 'flex-start' },
   badgeText: { fontSize: 11, fontWeight: 'bold' },
+
+ legendaReservaContainer: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(0, 163, 133, 0.12)', 
+    marginHorizontal: 20,
+    marginTop: 15,
+    padding: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'space-between', // Garante que a seta fique na ponta direita
+    borderWidth: 1,
+    borderColor: 'rgba(0, 163, 133, 0.25)',
+  },
+  legendaIcone: {
+    marginRight: 10,
+  },
+  legendaReservaTexto: {
+    color: '#00a385', 
+    fontSize: 13,
+    fontWeight: '600', 
+    flex: 1, // Faz o texto ocupar o espaço disponível antes da seta
+    lineHeight: 18,
+  },
 
 });

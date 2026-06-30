@@ -36,8 +36,10 @@ export default function DetalhesEquipamento() {
   const { adicionarItem, temReservaAtiva, reserva } = useReserva() as ContextoReservaProps;
   
   const [item, setItem] = useState<any>(null);
-  const [datasBloqueadas, setDatasBloqueadas] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [datasOcupadas, setDatasOcupadas] = useState<Record<string, { ocupado: number; esgotado: boolean }>>({});
+  const [totalUnidades, setTotalUnidades] = useState(0);
+  const [diaSelecionado, setDiaSelecionado] = useState<string | null>(null);
   
   // Estado local para controlar a quantidade que o utilizador quer levar
   const [quantidadeSelecionada, setQuantidadeSelecionada] = useState(1);
@@ -60,11 +62,9 @@ export default function DetalhesEquipamento() {
   const carregarDetalhes = async () => {
     try {
       const token = await AsyncStorage.getItem('userToken');
-
       const tipoParam = tipo || 'item'; // fallback seguro
 
       let endpoint = `/item/${id}?tipo=${tipoParam}`;
-
       if (temReservaAtiva) {
         endpoint += `&start_date=${reserva.dataInicio}&end_date=${reserva.dataFim}`;
       }
@@ -77,16 +77,17 @@ export default function DetalhesEquipamento() {
         setItem(response.data.data);
       }
 
-      // Datas esgotadas
+      // Datas ocupadas / esgotadas do calendário
       try {
         const datasResponse = await api.get(`/item/${id}/datas-esgotadas?tipo=${tipoParam}`, {
           headers: { Authorization: `Bearer ${token}` }
         });
         if (datasResponse.data.status === 'success') {
-          setDatasBloqueadas(datasResponse.data.data);
+          setDatasOcupadas(datasResponse.data.data.dias || {});
+          setTotalUnidades(datasResponse.data.data.total || 0);
         }
       } catch (err) {
-        console.log('Aviso: Não foi possível carregar as datas bloqueadas do calendário', err);
+        console.log('Aviso: Não foi possível carregar as datas do calendário', err);
       }
 
     } catch (error) {
@@ -116,17 +117,25 @@ export default function DetalhesEquipamento() {
   };
 
   
- const datasMarcadas = datasBloqueadas.reduce((acc: any, dataString: string) => {
-  acc[dataString] = {
-    disabled: true,
-    disableTouchEvent: true,
-    customStyles: {
-      container: { backgroundColor: '#FFEBEE', borderRadius: 6 },
-      text: { color: '#c62828', fontWeight: 'bold' },
-    },
-  };
-  return acc;
-}, {});
+  const datasMarcadas: any = Object.entries(datasOcupadas).reduce((acc: any, [data, info]: any) => {
+    acc[data] = {
+      customStyles: {
+        container: { backgroundColor: info.esgotado ? '#FFEBEE' : '#FFF8E1', borderRadius: 6 },
+        text: { color: info.esgotado ? '#c62828' : '#F57F17', fontWeight: 'bold' },
+      },
+    };
+    return acc;
+  }, {});
+
+  // realça o dia selecionado
+  if (diaSelecionado) {
+    datasMarcadas[diaSelecionado] = {
+      customStyles: {
+        container: { backgroundColor: '#1A237E', borderRadius: 6 },
+        text: { color: '#FFF', fontWeight: 'bold' },
+      },
+    };
+  }
 
   if (loading) {
     return (
@@ -207,6 +216,7 @@ export default function DetalhesEquipamento() {
                 markingType="custom"
                 markedDates={datasMarcadas}
                 minDate={new Date().toISOString().split('T')[0]}
+                onDayPress={(day) => setDiaSelecionado(day.dateString)}
               theme={{
                 todayTextColor: '#005596',
                 arrowColor: '#005596',
@@ -214,10 +224,32 @@ export default function DetalhesEquipamento() {
               }}
             />
           </View>
-          <View style={styles.legendaContainer}>
-            <View style={styles.legendaDot} />
-            <Text style={styles.legendaTexto}>Dias a vermelho indicam que o equipamento está indisponível.</Text>
+          <View style={styles.legendaRow}>
+            <View style={[styles.legendaDot, { backgroundColor: '#FFEBEE', borderColor: '#c62828' }]} />
+            <Text style={styles.legendaTexto}>Esgotado</Text>
+            <View style={[styles.legendaDot, { backgroundColor: '#FFF8E1', borderColor: '#F57F17', marginLeft: 16 }]} />
+            <Text style={styles.legendaTexto}>Parcialmente reservado</Text>
           </View>
+
+          {diaSelecionado && (() => {
+            const info = datasOcupadas[diaSelecionado];
+            const ocupado = info?.ocupado || 0;
+            const livres = Math.max(0, totalUnidades - ocupado);
+            return (
+              <View style={styles.infoDiaCard}>
+                <Text style={styles.infoDiaData}>{diaSelecionado.split('-').reverse().join('/')}</Text>
+                {info ? (
+                  <Text style={styles.infoDiaTexto}>
+                    {ocupado} de {totalUnidades} reservadas · {livres} {livres === 1 ? 'disponível' : 'disponíveis'}
+                  </Text>
+                ) : (
+                  <Text style={[styles.infoDiaTexto, { color: '#2E7D32' }]}>
+                    Totalmente disponível ({totalUnidades} {totalUnidades === 1 ? 'unidade' : 'unidades'})
+                  </Text>
+                )}
+              </View>
+            );
+          })()}
 
           <View style={{ height: 140 }} />
         </View>
@@ -306,5 +338,9 @@ const styles = StyleSheet.create({
   btnReservarText: { color: '#FFF', fontSize: 15, fontWeight: 'bold' },
   legendaContainer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 15 },
   legendaDot: { width: 12, height: 12, borderRadius: 6, backgroundColor: '#FFEBEE', borderWidth: 1, borderColor: '#c62828', marginRight: 8 },
-  legendaTexto: { fontSize: 13, color: '#757575', textAlign: 'center' }
+  legendaTexto: { fontSize: 13, color: '#757575', textAlign: 'center' },
+  legendaRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 14, flexWrap: 'wrap' },
+  infoDiaCard: { backgroundColor: '#FFF', borderRadius: 12, padding: 14, marginTop: 14, borderWidth: 1, borderColor: '#EEEEEE' },
+  infoDiaData: { fontSize: 14, fontWeight: 'bold', color: '#1A237E', marginBottom: 4 },
+  infoDiaTexto: { fontSize: 14, color: '#424242' },
 });

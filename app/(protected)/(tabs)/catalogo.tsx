@@ -97,7 +97,6 @@ export default function Catalogo() {
 
       if (response.data.status === 'success') {
         const novosDados = response.data.data;
-        console.log('ITENS CATÁLOGO:', novosDados.itens.map((i: any) => ({ nome: i.nome, qtd: i.item_unities_count })));
         
         let itensQueChegaram = novosDados.itens;
         let kitsQueChegaram = novosDados.kits || [];

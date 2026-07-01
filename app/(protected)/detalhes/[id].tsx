@@ -172,7 +172,7 @@ export default function DetalhesEquipamento() {
           )}
         </View>
 
-        <View style={styles.infoContainer}>
+          <View style={styles.infoContainer}>
           <View style={styles.tituloRow}>
             <Text style={styles.nomeItem}>{item.nome || 'Equipamento'}</Text>
             <View style={[styles.badgeDisponivel, item.quantidade === 0 && { backgroundColor: '#FFEBEE' }]}>
@@ -185,7 +185,10 @@ export default function DetalhesEquipamento() {
             </View>
           </View>
           
-          <Text style={styles.modeloItem}>Modelo: {item.model || 'N/A'}</Text>
+          {/* APENAS EXIBE O MODELO SE NÃO FOR KIT E SE EXISTIR VALOR */}
+          {!(item.is_kit === true || tipo === 'kit') && item.model && (
+            <Text style={styles.modeloItem}>Modelo: {item.model}</Text>
+          )}
           
           <View style={styles.divider} />
 
@@ -199,8 +202,11 @@ export default function DetalhesEquipamento() {
             <Text style={styles.detalheTexto}>Observação: {item.observacao || 'Sem observações'}</Text>
           </View>
 
-          <Text style={styles.seccaoTitulo}>Acessórios</Text>
-          <Text style={styles.descricaoTexto}>{item.acessorios || 'Sem acessórios listados.'}</Text>
+          {/* MUDANÇA DINÂMICA DO TÍTULO DA SECÇÃO */}
+          <Text style={styles.seccaoTitulo}>
+            {(item.is_kit === true || tipo === 'kit') ? 'Descrição' : 'Acessórios'}
+          </Text>
+          <Text style={styles.descricaoTexto}>{item.acessorios || 'Sem informações adicionais.'}</Text>
 
           <View style={styles.divider} />
           <Text style={styles.seccaoTitulo}>Disponibilidade</Text>
@@ -251,11 +257,12 @@ export default function DetalhesEquipamento() {
 
       {/* --- BOTTOM BAR INTELIGENTE --- */}
       <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom + 10, 20) }]}>
-        <View>
+       <View>
           <Text style={styles.precoLabel}>Preço Estimado</Text>
-          <Text style={styles.precoValor}>{item.preco || '20,00'} € / dia</Text>
+          <Text style={styles.precoValor}>
+            {item.preco && item.preco !== 'Não definido' ? `${item.preco} € / dia` : 'Não definido'}
+          </Text>
         </View>
-
         {temReservaAtiva ? (
           // INTERFACE SE TIVER RESERVA ATIVA: SELETOR + BOTAO ADICIONAR
           <View style={styles.containerAcoesReserva}>

@@ -59,6 +59,8 @@ export default function Login() {
       } else {
         setResultado(res.data?.message || 'Credenciais inválidas.');
       }
+    }finally {
+      setLoading(false);
     }
   }; 
  

@@ -21,6 +21,7 @@ interface Kit {
   image?: string;
   kit_unities_count: number;
   item_unities_count?: number;
+  price_day?: number | string;
 }
 
 interface Equipamento {
@@ -29,6 +30,7 @@ interface Equipamento {
   model: string;
   image?: string;
   item_unities_count: number;
+  price_day?: number | string;
 }
 
 export default function Catalogo() {

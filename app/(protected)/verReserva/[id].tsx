@@ -35,6 +35,7 @@ type DetalheReserva = {
   ciclica_id?: number | null;
   itens: ItemReservado[];
   kits: KitReservado[];
+  estimated_cost?: number | string;
 };
 
 
@@ -87,7 +88,7 @@ export default function DetalheReservaPage() {
           { 
             text: "OK", 
             onPress: () => {
-              router.replace('(tabs)/reservas');
+              router.replace('/reservas');
             } 
           }
         ]);
@@ -360,7 +361,12 @@ const styles = StyleSheet.create({
     fontWeight: 'bold', 
     fontSize: 13 
   },
-  backButton: { marginRight: 4, justifyContent: 'center', alignItems: 'center' },
+  headerTitle: { 
+    fontSize: 22,          
+    fontWeight: '800',     
+    color: '#0d1f30',      
+    marginBottom: 4 
+  },
   corpoConteudo: { flex: 1, backgroundColor: '#f4f7fc' },
   containerLoading: { flex: 1, backgroundColor: '#f4f7fc', justifyContent: 'center', alignItems: 'center', padding: 20 },
   errorText: { color: '#7a94aa', fontSize: 14, textAlign: 'center' },

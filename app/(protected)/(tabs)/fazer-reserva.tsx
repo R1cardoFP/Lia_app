@@ -30,7 +30,8 @@ const DIAS_DA_SEMANA = [
 
 export default function FazerReserva() {
   const router = useRouter();
-  const { reserva, iniciarReserva, removerItem, limparReserva, temReservaAtiva } = useReserva();
+  
+  const { reserva, iniciarReserva, removerItem, limparReserva, temReservaAtiva } = useReserva() as any;
 
   // Estados dos Dados do Formulário
   const [dataInicio, setDataInicio] = useState('');

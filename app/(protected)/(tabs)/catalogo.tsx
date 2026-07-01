@@ -261,8 +261,11 @@ export default function Catalogo() {
                           </View>
                         )}
                         <Text style={styles.cardTitulo} numberOfLines={1}>{kit.nome || kit.name}</Text>
-                         {/* <Text style={styles.cardSubtitulo} numberOfLines={1}>{kit.description || kit.model}</Text>*/}
-                        <Text style={styles.textoPreco}>{Number((kit as any).price_day || 0).toFixed(2)}€ / dia</Text>
+                        <Text style={styles.textoPreco}>
+                          {kit.price_day && kit.price_day !== 'Não definido' && Number(kit.price_day) > 0
+                            ? `${Number(kit.price_day).toFixed(2)}€ / dia`
+                            : 'Não definido'}
+                        </Text>
                         <View style={{ marginBottom: 3 }}>
                           <BadgeDisponibilidade quantidade={kit.kit_unities_count || kit.item_unities_count || 0} />
                         </View>
@@ -280,8 +283,17 @@ export default function Catalogo() {
             </Text>
           </View>
         }
-        renderItem={({ item }) => (
-          <TouchableHighlight underlayColor="#F5F5F5" style={{ borderRadius: 16, marginHorizontal: 20, marginBottom: 12 }} onPress={() => router.push(`/detalhes/${item.id}?tipo=${categoriaAtiva === 'Kits' ? 'kit' : 'item'}`)}>
+        
+        renderItem={({ item }: { item: any }) => {
+        // Descobre se o item atual é um kit
+        const isKit = categoriaAtiva === 'Kits' || item.is_kit === true;
+
+        return (
+          <TouchableHighlight 
+            underlayColor="#F5F5F5" 
+            style={{ borderRadius: 16, marginHorizontal: 20, marginBottom: 12 }} 
+            onPress={() => router.push(`/detalhes/${item.id}?tipo=${isKit ? 'kit' : 'item'}`)}
+          >
             <View style={styles.cardLista}>
               {item.image ? (
                 <Image source={{ uri: obterUrlImagem(item.image) }} style={styles.imagemListaMock} />
@@ -290,15 +302,29 @@ export default function Catalogo() {
                   <Ionicons name="camera-outline" size={24} color="#B0BEC5" />
                 </View>
               )}
+              
               <View style={styles.listaTextoInfo}>
-                <Text style={styles.cardTitulo} numberOfLines={1}>{item.nome}</Text>
-                <Text style={styles.cardSubtitulo} numberOfLines={1}>{item.model}</Text>
-                <Text style={styles.textoPreco}>{Number((item as any).price_day || 0).toFixed(2)}€ / dia</Text>
+                {/* Nome do Item ou Kit */}
+                <Text style={styles.cardTitulo} numberOfLines={1}>{item.nome || item.name}</Text>
+                
+                {/* SÓ exibe o modelo se NÃO for um kit */}
+                {!isKit && (
+                  <Text style={styles.cardSubtitulo} numberOfLines={1}>{item.model}</Text>
+                )}
+                
+                {/* Lógica do preço: se for nulo, zero ou 'Não definido', mostra 'Não definido' */}
+                <Text style={styles.textoPreco}>
+                  {item.price_day && item.price_day !== 'Não definido' && Number(item.price_day) > 0
+                    ? `${Number(item.price_day).toFixed(2)}€ / dia`
+                    : 'Não definido'}
+                </Text>
               </View>
-              <BadgeDisponibilidade quantidade={item.item_unities_count || 0} />
+              
+              <BadgeDisponibilidade quantidade={item.item_unities_count || item.kit_unities_count || 0} />
             </View>
           </TouchableHighlight>
-        )}
+        );
+      }}
         onEndReached={aoChegarAoFimDaLista}
         onEndReachedThreshold={0.1}
         ListFooterComponent={renderFooter}

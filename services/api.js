@@ -6,8 +6,7 @@ const API_URL = 'http://192.168.1.144:8000';
 
 const api = axios.create({
   baseURL:`${API_URL}/api`,
-  
- 
+  timeout: 10000,
 });
 
 api.interceptors.request.use(async (config) => {

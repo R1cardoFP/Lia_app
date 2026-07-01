@@ -1,5 +1,4 @@
 import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { useRouter } from 'expo-router';
 import { default as React, useEffect, useState } from 'react';
@@ -66,15 +65,12 @@ export default function FazerReserva() {
 
   const carregarCentrosDeCusto = async () => {
     try {
-      const token = await AsyncStorage.getItem('userToken');
-      const response = await api.get('/centros-custo', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await api.get('/centros-custo');
       if (response.data.status === 'success') {
         setCentrosCustoDB(response.data.data);
       }
     } catch (error) {
-        console.log('Erro ao buscar centros de custo à API.');
+      console.log('Erro ao buscar centros de custo à API.');
       setCentrosCustoDB([]);
     }
   };
@@ -102,54 +98,44 @@ export default function FazerReserva() {
   };
 
   const handleCancelarReserva = () => {
-      Alert.alert(
-        "Cancelar Reserva",
-        "Tens a certeza que queres cancelar? Todos os dados e itens escolhidos serão limpos.",
-        [
-          { text: "Não", style: "cancel" },
-          { 
-            text: "Sim, Cancelar", 
-            style: "destructive", 
-            onPress: () => {
-              // 1. Limpa os estados locais do formulário
-              setDataInicio('');
-              setDataFim('');
-              setMotivo('');
-              setCentroCusto(null);
-              setIsCiclica(false);
-              setDiaCiclico(null);
+    Alert.alert(
+      "Cancelar Reserva",
+      "Tens a certeza que queres cancelar? Todos os dados e itens escolhidos serão limpos.",
+      [
+        { text: "Não", style: "cancel" },
+        { 
+          text: "Sim, Cancelar", 
+          style: "destructive", 
+          onPress: () => {
+            setDataInicio('');
+            setDataFim('');
+            setMotivo('');
+            setCentroCusto(null);
+            setIsCiclica(false);
+            setDiaCiclico(null);
+            limparReserva();
+          } 
+        }
+      ]
+    );
+  };
 
-              // 2. Limpa o estado global (Contexto)
-              limparReserva();
-            } 
-          }
-        ]
-      );
-    };
-
-const handleConfirmarReservaFinal = async () => {
+  const handleConfirmarReservaFinal = async () => {
     if (reserva.itens.length === 0) {
       Alert.alert('Carrinho Vazio', 'Tens de adicionar pelo menos um equipamento do catálogo.');
       return;
     }
 
-    // DISPARA O ALERTA DE CONFIRMAÇÃO ANTES DE ENVIAR
     Alert.alert(
       "Confirmar Submissão",
       "Tens a certeza que queres submeter esta reserva?",
       [
-        {
-          text: "Cancelar",
-          style: "cancel"
-        },
+        { text: "Cancelar", style: "cancel" },
         {
           text: "Sim, Submeter",
           onPress: async () => {
-            // Toda a lógica de envio que já tinhas passa para aqui dentro
             setSubmitting(true);
-            try {
-              const token = await AsyncStorage.getItem('userToken');
-              
+            try {  
               const itensPuros = reserva.itens
                 .filter((i: any) => !i.is_kit)
                 .map((i: any) => ({ id: i.id, quantity: i.quantidadeSelecionada }));
@@ -173,9 +159,7 @@ const handleConfirmarReservaFinal = async () => {
                 kits: kitsPuros
               };
 
-              const response = await api.post('/reservas/criar', dadosParaEnviar, {
-                headers: { Authorization: `Bearer ${token}` }
-              });
+              const response = await api.post('/reservas/criar', dadosParaEnviar);
 
               if (response.data.status === 'success') {
                 Alert.alert('Sucesso', 'A tua requisição foi submetida com sucesso!', [
@@ -183,7 +167,7 @@ const handleConfirmarReservaFinal = async () => {
                 ]);
               }
             } catch (error: any) {
-              const mensagemErro = error.response?.data?.message || 'Ocorreu um problem ao submeter a reserva no servidor.';
+              const mensagemErro = error.response?.data?.message || 'Ocorreu um problema ao submeter a reserva no servidor.';
               Alert.alert('Erro ao Reservar', mensagemErro);
             } finally {
               setSubmitting(false);
@@ -194,8 +178,6 @@ const handleConfirmarReservaFinal = async () => {
     );
   };
 
-
-  // Função para calcular a quantidade de dias entre as datas
   // Função para calcular a quantidade de dias/repetições entre as datas
   const calcularDias = () => {
     if (!reserva.dataInicio || !reserva.dataFim) return 1;
@@ -210,14 +192,10 @@ const handleConfirmarReservaFinal = async () => {
       let totalDiasCiclicos = 0;
       let dataAtual = new Date(inicio);
 
-      // Loop do dia de início ao dia de fim
       while (dataAtual <= fim) {
-        // No teu DIAS_DA_SEMANA: 0 é Domingo, 1 é Segunda, etc.
-        // O .getDay() do JavaScript também usa: 0 para Domingo, 1 para Segunda...
         if (dataAtual.getDay() === reserva.diaCiclico) {
           totalDiasCiclicos++;
         }
-        // Avança 1 dia
         dataAtual.setDate(dataAtual.getDate() + 1);
       }
 

@@ -6,10 +6,7 @@ import { StatusBar } from 'expo-status-bar';
 import { ActivityIndicator, View } from 'react-native';
 import 'react-native-reanimated';
  
-export const unstable_settings = { 
-  anchor: 'login', 
-}; 
- 
+
 export default function ProtectedLayout() { 
 
    const { isLoggedIn, isReady } = useAuth(); // 4. Extrai as variáveis do contexto

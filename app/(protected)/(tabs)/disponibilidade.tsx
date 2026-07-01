@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { useBottomTabBarHeight } from '@react-navigation/bottom-tabs';
 import { useFocusEffect } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -17,6 +18,7 @@ LocaleConfig.locales['pt'] = {
 LocaleConfig.defaultLocale = 'pt';
 
 export default function Disponibilidade() {
+  const tabBarHeight = useBottomTabBarHeight();
   const [horarios, setHorarios] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [diaSelecionado, setDiaSelecionado] = useState<string | null>(null);
@@ -97,7 +99,7 @@ export default function Disponibilidade() {
       </View>
 
       <View style={styles.corpoConteudo}>
-        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20 }}>
+        <ScrollView showsVerticalScrollIndicator={false}  contentContainerStyle={{ padding: 20, paddingBottom: tabBarHeight + 30 }}>
 
           {/* Cartão: próximo horário disponível */}
           {proximoDia && (
@@ -168,7 +170,7 @@ export default function Disponibilidade() {
             )}
           </View>
 
-          <View style={{ height: 20 }} />
+          
         </ScrollView>
       </View>
     </SafeAreaView>

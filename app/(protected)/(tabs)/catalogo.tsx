@@ -187,13 +187,15 @@ export default function Catalogo() {
     );
   }
 
-    if (loadingInitial && equipamentosItens.length === 0) {
-    return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color="#1A237E" />
-      </View>
-    );
-  }
+
+  if (loadingInitial && categoriasDB.length <= 1 && equipamentosItens.length === 0) {
+  return (
+    <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#FFF' }}>
+      <ActivityIndicator size="large" color="#065294" />
+    </View>
+  );
+}
+
   const renderFooter = () => {
     if (!loadingMore) return <View style={{ height: 40 }} />; 
     return (

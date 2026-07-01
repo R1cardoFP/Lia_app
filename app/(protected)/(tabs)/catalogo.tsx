@@ -314,7 +314,7 @@ export default function Catalogo() {
                         </View>
                       )}
                       <Text style={styles.cardTitulo} numberOfLines={1}>{kit.nome || kit.name}</Text>
-                      <Text style={styles.cardSubtitulo} numberOfLines={1}>{kit.description || kit.model}</Text>
+                      {/*<Text style={styles.cardSubtitulo} numberOfLines={1}>{kit.description || kit.model}</Text>*/}
                       <Text style={styles.textoPreco}>{Number(kit.price_day || 0).toFixed(2)}€ / dia</Text>
                       <View  style={{ marginBottom: 3 }}>
                       <BadgeDisponibilidade quantidade={kit.kit_unities_count || kit.item_unities_count || 0} />

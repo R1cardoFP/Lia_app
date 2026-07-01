@@ -127,66 +127,124 @@ export default function FazerReserva() {
       );
     };
 
-  const handleConfirmarReservaFinal = async () => {
+const handleConfirmarReservaFinal = async () => {
     if (reserva.itens.length === 0) {
       Alert.alert('Carrinho Vazio', 'Tens de adicionar pelo menos um equipamento do catálogo.');
       return;
     }
 
-     setSubmitting(true);
-    try {
-      const token = await AsyncStorage.getItem('userToken');
-      
-      // 1. Separar os itens e os kits em dois arrays distintos como o teu Laravel pede
-      const itensPuros = reserva.itens
-        .filter((i: any) => !i.is_kit)
-        .map((i: any) => ({ id: i.id, quantity: i.quantidadeSelecionada }));
-        
-      const kitsPuros = reserva.itens
-        .filter((i: any) => i.is_kit)
-        .map((i: any) => ({ id: i.id, quantity: i.quantidadeSelecionada }));
+    // DISPARA O ALERTA DE CONFIRMAÇÃO ANTES DE ENVIAR
+    Alert.alert(
+      "Confirmar Submissão",
+      "Tens a certeza que queres submeter esta reserva?",
+      [
+        {
+          text: "Cancelar",
+          style: "cancel"
+        },
+        {
+          text: "Sim, Submeter",
+          onPress: async () => {
+            // Toda a lógica de envio que já tinhas passa para aqui dentro
+            setSubmitting(true);
+            try {
+              const token = await AsyncStorage.getItem('userToken');
+              
+              const itensPuros = reserva.itens
+                .filter((i: any) => !i.is_kit)
+                .map((i: any) => ({ id: i.id, quantity: i.quantidadeSelecionada }));
+                
+              const kitsPuros = reserva.itens
+                .filter((i: any) => i.is_kit)
+                .map((i: any) => ({ id: i.id, quantity: i.quantidadeSelecionada }));
 
-      // 2. Calcular o ciclica_id com base na matemática fantástica do teu backend
-      // Se não for cíclica, ID é 1. Se for, é o ID do dia da semana (0 a 6) + 2.
-      let ciclicaFormatada = 1;
-      if (reserva.isCiclica && reserva.diaCiclico !== null) {
-        ciclicaFormatada = reserva.diaCiclico + 2;
+              let ciclicaFormatada = 1;
+              if (reserva.isCiclica && reserva.diaCiclico !== null) {
+                ciclicaFormatada = reserva.diaCiclico + 2;
+              }
+
+              const dadosParaEnviar = {
+                description: reserva.motivo,
+                start_date: reserva.dataInicio,
+                end_date: reserva.dataFim,
+                cost_center_id: reserva.centroCusto,
+                ciclica_id: ciclicaFormatada,
+                items: itensPuros,
+                kits: kitsPuros
+              };
+
+              const response = await api.post('/reservas/criar', dadosParaEnviar, {
+                headers: { Authorization: `Bearer ${token}` }
+              });
+
+              if (response.data.status === 'success') {
+                Alert.alert('Sucesso', 'A tua requisição foi submetida com sucesso!', [
+                  { text: 'OK', onPress: () => { limparReserva(); router.push('/reservas'); } }
+                ]);
+              }
+            } catch (error: any) {
+              const mensagemErro = error.response?.data?.message || 'Ocorreu um problem ao submeter a reserva no servidor.';
+              Alert.alert('Erro ao Reservar', mensagemErro);
+            } finally {
+              setSubmitting(false);
+            }
+          }
+        }
+      ]
+    );
+  };
+
+
+  // Função para calcular a quantidade de dias entre as datas
+  // Função para calcular a quantidade de dias/repetições entre as datas
+  const calcularDias = () => {
+    if (!reserva.dataInicio || !reserva.dataFim) return 1;
+    
+    const inicio = new Date(reserva.dataInicio);
+    const fim = new Date(reserva.dataFim);
+    
+    if (inicio > fim) return 1;
+
+    // Se for CÍCLICA, contamos apenas os dias específicos da semana no intervalo
+    if (reserva.isCiclica && reserva.diaCiclico !== null) {
+      let totalDiasCiclicos = 0;
+      let dataAtual = new Date(inicio);
+
+      // Loop do dia de início ao dia de fim
+      while (dataAtual <= fim) {
+        // No teu DIAS_DA_SEMANA: 0 é Domingo, 1 é Segunda, etc.
+        // O .getDay() do JavaScript também usa: 0 para Domingo, 1 para Segunda...
+        if (dataAtual.getDay() === reserva.diaCiclico) {
+          totalDiasCiclicos++;
+        }
+        // Avança 1 dia
+        dataAtual.setDate(dataAtual.getDate() + 1);
       }
 
-      // 3. Montar o pacote final com os nomes exatos do teu Request de validação
-      const dadosParaEnviar = {
-        description: reserva.motivo,
-        start_date: reserva.dataInicio,
-        end_date: reserva.dataFim,
-        cost_center_id: reserva.centroCusto,
-        ciclica_id: ciclicaFormatada,
-        items: itensPuros,
-        kits: kitsPuros
-      };
-
-      // ATENÇÃO: Confirma se o URL aqui bate certo com o teu api.php
-      const response = await api.post('/reservas/criar', dadosParaEnviar, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
-      if (response.data.status === 'success') {
-        Alert.alert('Sucesso', 'A tua requisição foi submetida com sucesso!', [
-          { text: 'OK', onPress: () => { limparReserva(); router.push('/reservas'); } }
-        ]);
-      }
-    } catch (error: any) {
-      // Se o Laravel devolver um erro de validação (ex: falta de stock ou user_type_id == 6)
-      const mensagemErro = error.response?.data?.message || 'Ocorreu um problema ao submeter a reserva no servidor.';
-      Alert.alert('Erro ao Reservar', mensagemErro);
-    }finally {
-      setSubmitting(false);
+      return totalDiasCiclicos > 0 ? totalDiasCiclicos : 1;
     }
+
+    // Se NÃO for cíclica, mantém o cálculo normal de dias corridos
+    const diferencaTempo = fim.getTime() - inicio.getTime();
+    const diferencaDias = Math.ceil(diferencaTempo / (1000 * 60 * 60 * 24)) + 1;
+    return diferencaDias > 0 ? diferencaDias : 1;
+  };
+
+  // Função para calcular o custo estimado total em tempo real
+  const calcularCustoTotalEstimado = () => {
+    if (!reserva.itens || reserva.itens.length === 0) return '0.00';
+    
+    const totalPorDia = reserva.itens.reduce((acumulador: number, item: any) => {
+      const precoUnidade = Number(item.preco || item.price_day || 20);
+      const quantidade = Number(item.quantidadeSelecionada || 1);
+      return acumulador + (precoUnidade * quantidade);
+    }, 0);
+
+    const dias = calcularDias();
+    return (totalPorDia * dias).toFixed(2);
   };
 
   // ========================================================
-  // RENDERIZAÇÃO 1: FORMULÁRIO COM DATE PICKERS E SELECTS
-  // ========================================================
-// ========================================================
   // RENDERIZAÇÃO 1: FORMULÁRIO COM DATE PICKERS E SELECTS
   // ========================================================
   if (!temReservaAtiva) {
@@ -194,7 +252,7 @@ export default function FazerReserva() {
       <SafeAreaView style={styles.safeArea}>
         <StatusBar backgroundColor="#ffffff" barStyle="dark-content" />
 
-        {/* HEADER CUSTOMIZADO (Igual ao ecrã de histórico) */}
+        {/* HEADER CUSTOMIZADO */}
         <View style={styles.headerCustom}>
           <Text style={styles.tituloPrincipal}>Nova Reserva</Text>
           <Text style={styles.subtituloPrincipal}>Define o período e as informações da tua requisição</Text>
@@ -206,7 +264,7 @@ export default function FazerReserva() {
             showsVerticalScrollIndicator={false} 
             contentContainerStyle={[
               styles.scrollContainer, 
-              { paddingBottom: tabBarHeight + insets.bottom + 10 } // <--- Garante espaço dinâmico extra no fim
+              { paddingBottom: tabBarHeight + insets.bottom + 10 }
             ]}
           >
             <View style={styles.containerFormulario}>
@@ -304,10 +362,6 @@ export default function FazerReserva() {
           </ScrollView>
         </View>
 
-        {/* ======================================================== */}
-        {/* OS TEUS MODAIS ORIGINAIS (Recuperados com sucesso!)       */}
-        {/* ======================================================== */}
-        
         {/* MODAL DATA INÍCIO */}
         <Modal visible={modalDataInicio} transparent animationType="fade">
           <View style={styles.modalOverlay}>
@@ -388,132 +442,139 @@ export default function FazerReserva() {
   // ========================================================
   return (
     <SafeAreaView style={styles.safeArea}>
-     <View style={styles.headerCarrinho}>
+      <View style={styles.headerCarrinho}>
         <View style={{ flex: 1, marginRight: 10 }}>
           <Text style={styles.tituloPrincipal}>A tua Reserva</Text>
-          <Text style={[styles.subtituloPrincipal, { color: '#00a385',fontWeight: '600' }]} numberOfLines={1}>
+          <Text style={[styles.subtituloPrincipal, { color: '#00a385', fontWeight: '600' }]} numberOfLines={1}>
             Período: {reserva.dataInicio} a {reserva.dataFim}
           </Text>
         </View>
-       <TouchableOpacity style={styles.btnLimparTudo} onPress={handleCancelarReserva}>
+        <TouchableOpacity style={styles.btnLimparTudo} onPress={handleCancelarReserva}>
           <Text style={styles.btnLimparTudoText}>Cancelar</Text>
         </TouchableOpacity>
       </View>
+
+      
+      
       <View style={styles.corpoFormulario}>
-      <FlatList
-        data={reserva.itens}
-        keyExtractor={(item, index) => String(item.id) + (item.is_kit ? '-kit' : '-item') + index}
-        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 50 }}
-       ListHeaderComponent={() => (
-        <View style={styles.cardInfoPrincipal}>
-          {/* Esta parte do Motivo aparece sempre */}
-          <Text style={styles.tituloDataTitle}>Motivo/Justificação</Text>
-          <Text style={styles.textoMotivo}>{reserva.motivo}</Text>
-          
-          {/* Esta parte da Repetição SÓ aparece se for cíclica */}
-          {reserva.isCiclica && reserva.diaCiclico !== null && (
-            <View style={styles.motivoContainer}>
-              <Text style={styles.labelSecundario}>REPETIÇÃO</Text> 
-              <Text style={[styles.motivoTexto, { marginTop: 4 }]}>
-                Todas as {DIAS_DA_SEMANA.find(d => d.id === reserva.diaCiclico)?.label}s
-              </Text>
+        <View style={styles.avisoIpvcContainer}>
+        {/* ESTE É O ÍCONE DE INFORMAÇÃO */}
+        <Ionicons name="information-circle-outline" size={20} color="#00a385" style={{ marginRight: 10 }} />
+        
+        <Text style={styles.avisoIpvcTexto}>
+          As reservas são totalmente isentas de custos para os alunos do IPVC.
+        </Text>
+      </View>
+        <FlatList
+          data={reserva.itens}
+          keyExtractor={(item, index) => String(item.id) + (item.is_kit ? '-kit' : '-item') + index}
+          // MODIFICADO: Aumentado de 50 para 150 para os itens não ficarem escondidos atrás da barra fixa
+          contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 50 }}
+          ListHeaderComponent={() => (
+            <View style={styles.cardInfoPrincipal}>
+              <Text style={styles.tituloDataTitle}>Motivo/Justificação</Text>
+              <Text style={styles.textoMotivo}>{reserva.motivo}</Text>
+              
+              {reserva.isCiclica && reserva.diaCiclico !== null && (
+                <View style={styles.motivoContainer}>
+                  <Text style={styles.labelSecundario}>REPETIÇÃO</Text> 
+                  <Text style={[styles.motivoTexto, { marginTop: 4 }]}>
+                    Todas as {DIAS_DA_SEMANA.find(d => d.id === reserva.diaCiclico)?.label}s
+                  </Text>
+                </View>
+              )}
             </View>
           )}
+
+          ListEmptyComponent={() => (
+            <View style={styles.carrinhoVazioContainer}>
+              <Ionicons name="cart-outline" size={50} color="#9E9E9E" />
+              <Text style={styles.carrinhoVazioTexto}>Ainda não adicionaste nenhum equipamento.</Text>
+              <TouchableOpacity style={styles.btnIrAoCatalogo} onPress={() => router.push('/catalogo')}>
+                <Text style={styles.btnIrAoCatalogoText}>Ir para o Catálogo</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          renderItem={({ item, index }) => {
+            const isFirstItem = !item.is_kit && index === 0;
+            const isFirstKit = item.is_kit && (index === 0 || !reserva.itens[index - 1]?.is_kit);
+
+            return (
+              <View style={{ marginBottom: 2 }}>
+                {isFirstItem && (
+                  <Text style={styles.sectionTitle}>ITENS ADICIONADOS</Text>
+                )}
+
+                {isFirstKit && (
+                  <Text style={[styles.sectionTitle, { marginTop: 15 }]}>KITS ADICIONADOS</Text>
+                )}
+
+                <TouchableHighlight 
+                  key={`${item.is_kit ? 'kit' : 'item'}-${item.id}-${index}`} 
+                  style={styles.cardLista}
+                  underlayColor="#E8EAF6"
+                  onPress={() => router.push(`/detalhes/${item.id}?tipo=${item.is_kit ? 'kit' : 'item'}`)}
+                >
+                  <View style={styles.cardContentInternal}>
+                    {item.image ? (
+                      <Image source={{ uri: obterUrlImagem(item.image) }} style={styles.imagemListaMock} />
+                    ) : (
+                      <View style={[styles.imagemListaMock, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#F5F5F5' }]}>
+                        <Ionicons name="camera-outline" size={24} color="#B0BEC5" />
+                      </View>
+                    )}
+
+                    <View style={styles.listaTextoInfo}>
+                      <Text style={styles.cardTitulo} numberOfLines={1}>{item.nome}</Text>
+                      <Text style={styles.cardSubtitulo} numberOfLines={1}>{item.model || item.description || 'Sem descrição.'}</Text>
+                      <Text style={styles.textoPreco}>{Number(item.preco || item.price_day || 20).toFixed(2)}€ / dia</Text>
+                    </View>
+
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                      <View style={styles.badgeQtd}>
+                        <Text style={styles.badgeQtdText}>{item.quantidadeSelecionada}x</Text>
+                      </View>
+                      
+                      <TouchableOpacity style={styles.btnRemoverItem} onPress={() => removerItem(item.id, item.is_kit)}>
+                        <Ionicons name="trash-outline" size={20} color="#E53935" />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                </TouchableHighlight>
+              </View>
+            );
+          }}
+        />
+      </View>
+
+      {/* MODIFICADO: A BottomBar fixa agora está aqui no ecrã do carrinho, onde deve estar */}
+      {reserva.itens.length > 0 && (
+        <View style={styles.bottomBar}>
+          <View>
+            <Text style={styles.precoLabel}>Custo Total da Reserva</Text>
+            <Text style={styles.precoValor}>
+              {calcularCustoTotalEstimado()} €
+            </Text>
+          </View>
+
+          <TouchableOpacity 
+            style={[styles.btnSubmeterFinal, submitting && { opacity: 0.7 }]} 
+            onPress={handleConfirmarReservaFinal}
+            disabled={submitting}
+          >
+            {submitting ? (
+              <ActivityIndicator color="#FFF" />
+            ) : (
+              <>
+                <Ionicons name="checkmark-circle-outline" size={18} color="#FFF" style={{ marginRight: 6 }} />
+                <Text style={styles.btnSubmeterFinalText}>Submeter</Text>
+              </>
+            )}
+          </TouchableOpacity>
         </View>
       )}
-
-
-        ListEmptyComponent={() => (
-          <View style={styles.carrinhoVazioContainer}>
-            <Ionicons name="cart-outline" size={50} color="#9E9E9E" />
-            <Text style={styles.carrinhoVazioTexto}>Ainda não adicionaste nenhum equipamento.</Text>
-            <TouchableOpacity style={styles.btnIrAoCatalogo} onPress={() => router.push('/catalogo')}>
-              <Text style={styles.btnIrAoCatalogoText}>Ir para o Catálogo</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
-
-        ListFooterComponent={() => (
-    reserva.itens.length > 0 ? (
-      <TouchableOpacity 
-        style={[styles.btnIniciar, submitting && { opacity: 0.7 }]} 
-        onPress={handleConfirmarReservaFinal}
-        disabled={submitting}
-      >
-        {submitting ? (
-          <ActivityIndicator color="#FFF" />
-        ) : (
-          <>
-            <Ionicons name="checkmark-circle-outline" size={22} color="#FFF" style={{ marginRight: 8 }} />
-            <Text style={styles.btnIniciarText}>Confirmar e Submeter Reserva</Text>
-          </>
-        )}
-      </TouchableOpacity>
-    ) : null
-  )}
-
-
-        renderItem={({ item, index }) => {
-          // Determina se é necessário exibir o título da secção acima do primeiro elemento de cada grupo
-          const isFirstItem = !item.is_kit && index === 0;
-          const isFirstKit = item.is_kit && (index === 0 || !reserva.itens[index - 1]?.is_kit);
-
-          return (
-            <View style={{ marginBottom: 2 }}>
-              {/* Título de Secção para Equipamentos */}
-              {isFirstItem && (
-                <Text style={styles.sectionTitle}>ITENS ADICIONADOS</Text>
-              )}
-
-              {/* Título de Secção para Kits */}
-              {isFirstKit && (
-                <Text style={[styles.sectionTitle, { marginTop: 15 }]}>KITS ADICIONADOS</Text>
-              )}
-
-              {/* Card no formato exato da página de Detalhes */}
-              <TouchableHighlight 
-                key={`${item.is_kit ? 'kit' : 'item'}-${item.id}-${index}`} 
-                style={styles.cardLista}
-                underlayColor="#E8EAF6"
-                onPress={() => router.push(`/detalhes/${item.id}?tipo=${item.is_kit ? 'kit' : 'item'}`)}
-              >
-                <View style={styles.cardContentInternal}>
-
-                  {item.image ? (
-                    <Image source={{ uri: obterUrlImagem(item.image) }} style={styles.imagemListaMock} />
-                  ) : (
-                    <View style={[styles.imagemListaMock, { justifyContent: 'center', alignItems: 'center', backgroundColor: '#F5F5F5' }]}>
-                      <Ionicons name="camera-outline" size={24} color="#B0BEC5" />
-                    </View>
-                  )}
-
-                  <View style={styles.listaTextoInfo}>
-                    <Text style={styles.cardTitulo} numberOfLines={1}>{item.nome}</Text>
-                    <Text style={styles.cardSubtitulo} numberOfLines={1}>{item.model || item.description || 'Sem descrição.'}</Text>
-                    <Text style={styles.textoPreco}>{Number(item.preco || item.price_day || 20).toFixed(2)}€ / dia</Text>
-                  </View>
-
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                    <View style={styles.badgeQtd}>
-                      <Text style={styles.badgeQtdText}>{item.quantidadeSelecionada}x</Text>
-                    </View>
-                    
-                    {/* Mantemos o botão de remover original integrado no novo estilo do card */}
-                    <TouchableOpacity style={styles.btnRemoverItem} onPress={() => removerItem(item.id, item.is_kit)}>
-                      <Ionicons name="trash-outline" size={20} color="#E53935" />
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              </TouchableHighlight>
-            </View>
-          );
-        }}
-      />
-
-       </View>
     </SafeAreaView>
-
   );
 }
 
@@ -844,5 +905,67 @@ const styles = StyleSheet.create({
   },
   btnRemoverItem: { 
     padding: 4 
-  }
+  },
+  bottomBar: { 
+  position: 'absolute', 
+  bottom: 0, // Se continuar tapado, temporariamente muda para 20 ou 30 para teste
+  left: 0, 
+  right: 0, 
+  backgroundColor: '#FFF', 
+  flexDirection: 'row', 
+  justifyContent: 'space-between', 
+  alignItems: 'center', 
+  paddingHorizontal: 20, 
+  paddingTop: 15, 
+  paddingBottom: 120, // Aumentado para empurrar o texto e botão para cima das barras nativas
+  borderTopWidth: 1, 
+  borderTopColor: '#EEEEEE', 
+  elevation: 20,     // Aumentado o z-index/elevation para garantir que fica no topo de tudo
+  zIndex: 999,       // Adicionado explicitamente para iOS
+  shadowColor: '#000', 
+  shadowOffset: { width: 0, height: -4 }, 
+  shadowOpacity: 0.1, 
+  shadowRadius: 10 
+},
+  precoLabel: { 
+    fontSize: 13, 
+    color: '#757575', 
+    marginBottom: 2 
+  },
+  precoValor: { 
+    fontSize: 22, 
+    fontWeight: 'bold', 
+    color: '#065294' 
+  },
+  btnSubmeterFinal: {
+    backgroundColor: '#065294',
+    paddingHorizontal: 22,
+    paddingVertical: 12,
+    borderRadius: 10,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  btnSubmeterFinalText: {
+    color: '#FFF',
+    fontWeight: 'bold',
+    fontSize: 15
+  },
+
+avisoIpvcContainer: {
+  flexDirection: 'row',
+  backgroundColor: 'rgba(0, 163, 133, 0.12)', 
+  marginHorizontal: 20,
+  marginTop: 15,
+  padding: 12,
+  borderRadius: 12,
+  alignItems: 'center',
+},
+avisoIpvcTexto: {
+  color: '#00a385', 
+  fontSize: 13,
+  fontWeight: '600', 
+  flex: 1, 
+  lineHeight: 18,
+},
 });

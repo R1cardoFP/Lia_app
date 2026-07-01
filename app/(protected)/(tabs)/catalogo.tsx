@@ -254,7 +254,7 @@ export default function Catalogo() {
     <Ionicons name="calendar-outline" size={20} color="#00a385" style={styles.legendaIcone} />
     
     <Text style={styles.legendaReservaTexto}>
-      Equipamentos disponíveis para reserva no período de {reserva?.dataInicio} a {reserva?.dataFim}
+      Iniciou uma reserva! Os equipamentos listados estão disponíveis para reserva no período de {reserva?.dataInicio} a {reserva?.dataFim}
     </Text>
 
     {/* Ícone na ponta direita para indicar que é um botão clicável */}
@@ -446,8 +446,8 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'space-between', // Garante que a seta fique na ponta direita
-    borderWidth: 1,
-    borderColor: 'rgba(0, 163, 133, 0.25)',
+    //borderWidth: 1,
+    //borderColor: 'rgba(0, 163, 133, 0.25)',
   },
   legendaIcone: {
     marginRight: 10,

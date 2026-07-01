@@ -204,6 +204,13 @@ export default function DetalheReservaPage() {
       {/* Corpo com Scroll */}
       <View style={styles.corpoConteudo}>
         <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
+
+          <View style={styles.avisoIpvcContainer}>
+          <Ionicons name="information-circle-outline" size={20} color="#00a385" style={{ marginRight: 10 }} />
+          <Text style={styles.avisoIpvcTexto}>
+            As reservas são totalmente isentas de custos para os alunos do IPVC.
+          </Text>
+        </View>
           
           {/* Card Info Principal */}
           <View style={styles.cardInfoPrincipal}>
@@ -315,6 +322,17 @@ export default function DetalheReservaPage() {
           <View style={{ height: 40 }} />
         </ScrollView>
       </View>
+
+
+      <View style={styles.bottomBar}>
+  <View>
+    <Text style={styles.precoLabel}>Custo Total da Reserva</Text>
+    <Text style={styles.precoValor}>
+      {reserva.estimated_cost ? Number(reserva.estimated_cost).toFixed(2) : '0.00'} €
+    </Text>
+  </View>
+</View>
+
     </SafeAreaView>
   );
 }
@@ -355,6 +373,7 @@ const styles = StyleSheet.create({
     elevation: 2,
     overflow: 'hidden'
   },
+  
   cardContentInternal: { flexDirection: 'row', alignItems: 'center', padding: 12, flex: 1 },
   badge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12, minWidth: 74, alignItems: 'center' },
   badgeText: { fontSize: 11, fontWeight: '600' },
@@ -388,4 +407,43 @@ const styles = StyleSheet.create({
     marginTop: 10,
   },
   ciclicaTexto: { fontSize: 12.5, fontWeight: '600', color: '#065294' },
+  bottomBar: { 
+    position: 'absolute', 
+    bottom: 0, 
+    left: 0, 
+    right: 0, 
+    backgroundColor: '#FFF', 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    paddingHorizontal: 20, 
+    paddingTop: 15, 
+    paddingBottom: 50, // Ajustado para dar um respiro confortável em ecrãs com notch inferior
+    borderTopWidth: 1, 
+    borderTopColor: '#EEEEEE', 
+    elevation: 15, 
+    shadowColor: '#000', 
+    shadowOffset: { width: 0, height: -4 }, 
+    shadowOpacity: 0.1, 
+    shadowRadius: 10 
+  },
+  precoLabel: { fontSize: 13, color: '#757575', marginBottom: 2 },
+  precoValor: { fontSize: 22, fontWeight: 'bold', color: '#065294' },
+
+  avisoIpvcContainer: {
+  flexDirection: 'row',
+  backgroundColor: 'rgba(0, 163, 133, 0.12)', 
+  marginHorizontal: 20,
+  marginTop: 15,
+  padding: 12,
+  borderRadius: 12,
+  alignItems: 'center',
+},
+avisoIpvcTexto: {
+  color: '#00a385', 
+  fontSize: 13,
+  fontWeight: '600', 
+  flex: 1, 
+  lineHeight: 18,
+},
 });

@@ -2,7 +2,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { Feather } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import React, { useState } from 'react';
-import { ActivityIndicator, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Image, ScrollView, StatusBar, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
  
 export default function Login() { 
@@ -71,7 +71,11 @@ export default function Login() {
       {/* BLOCO SUPERIOR AZUL */} 
       <View style={styles.header}> 
         <View style={styles.logoIconContainer}> 
-          <Feather name="camera" size={28} color="#fff" /> 
+          <Image 
+            source={require('../assets/images/logo.png')} 
+            style={styles.logoImg} 
+            resizeMode="contain" 
+          /> 
         </View> 
         <Text style={styles.headerTitle}>LIA Reservas</Text> 
         <Text style={styles.headerSubtitle}>Equipamentos Audiovisuais</Text> 
@@ -159,15 +163,24 @@ const styles = StyleSheet.create({
     paddingBottom: 48, 
     alignItems: 'center', 
   }, 
-  logoIconContainer: { 
-    width: 60, 
-    height: 60, 
-    borderRadius: 18, 
-    backgroundColor: 'rgba(255, 255, 255, 0.15)', 
+ logoIconContainer: { 
+    width: 76, 
+    height: 76, 
+    borderRadius: 20, 
+    backgroundColor: '#fff',            // fundo branco para o logo colorido saltar
     alignItems: 'center', 
     justifyContent: 'center', 
     marginBottom: 14, 
+    shadowColor: '#000', 
+    shadowOffset: { width: 0, height: 3 }, 
+    shadowOpacity: 0.15, 
+    shadowRadius: 6, 
+    elevation: 4,
   }, 
+  logoImg: { 
+    width: 52, 
+    height: 52 
+  },
   headerTitle: { 
     fontSize: 26, 
     fontWeight: '800', 

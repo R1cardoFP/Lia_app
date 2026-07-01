@@ -78,9 +78,23 @@ export default function Register() {
       setIsError(false);
       setResultado('Conta criada com sucesso! A entrar...'); 
        
-    } catch (error: any) { 
+    } catch (error: any) {
       setIsError(true);
-      setResultado(error.response?.data?.message || 'Não foi possível conectar ao servidor. Verifique a rede.'); 
+      const res = error.response;
+
+      if (!res) {
+        // Sem resposta = sem ligação ao servidor
+        setResultado('Não foi possível conectar ao servidor. Verifique a rede.');
+      } else if (res.status === 422 && res.data?.errors) {
+        // Erro de validação: mostra a 1ª mensagem específica (ex.: email duplicado, já em PT)
+        const primeiroErro = (Object.values(res.data.errors)[0] as string[])?.[0];
+        setResultado(primeiroErro || 'Verifique os dados introduzidos.');
+      } else if (res.status >= 500) {
+        // Erro interno do servidor / base de dados
+        setResultado('Erro no servidor, tente novamente mais tarde.');
+      } else {
+        setResultado(res.data?.message || 'Ocorreu um erro. Tente novamente.');
+      }
     }
   }; 
  

@@ -60,6 +60,7 @@ export default function Catalogo() {
   const [paginaAtual, setPaginaAtual] = useState(1);
   const [temMaisPaginas, setTemMaisPaginas] = useState(true);
   const [pesquisa, setPesquisa] = useState('');
+  const [erroConexao, setErroConexao] = useState(false);
 
   const { temReservaAtiva, reserva } = useReserva() as any;
 
@@ -86,6 +87,8 @@ export default function Catalogo() {
     try {
       if (numeroPagina === 1) setLoadingInitial(true);
       else setLoadingMore(true);
+
+      setErroConexao(false);
       
       let endpoint = `/catalogo?page=${numeroPagina}&categoria_id=${catId}&search=${encodeURIComponent(termoPesquisa)}`;
       
@@ -127,6 +130,7 @@ export default function Catalogo() {
       }
     } catch (error: any) {
       console.log('Erro ao carregar catálogo:', error);
+      setErroConexao(true);
       if (error.response?.status === 401) {
         logout(); 
       }
@@ -164,6 +168,23 @@ export default function Catalogo() {
     );
   };
 
+
+  if (erroConexao && !loadingInitial) {
+    return (
+      <View style={styles.containerErro}>
+        <Ionicons name="cloud-offline-outline" size={60} color="#E53935" />
+        <Text style={styles.tituloErro}>Sem conexão ao servidor</Text>
+        <Text style={styles.subtituloErro}>Não foi possível carregar catálogo. Verifica o Wi-Fi ou dados móveis.</Text>
+        
+        <TouchableOpacity 
+          style={styles.btnTentarNovamente} 
+          onPress={() => carregarCatalogo(1, categoriaAtiva, pesquisa)}
+        >
+          <Text style={styles.btnTentarNovamenteTexto}>Tentar Novamente</Text>
+        </TouchableOpacity>
+      </View>
+    );
+  }
 
     if (loadingInitial && equipamentosItens.length === 0) {
     return (
@@ -459,6 +480,39 @@ const styles = StyleSheet.create({
     fontWeight: '600', 
     flex: 1, // Faz o texto ocupar o espaço disponível antes da seta
     lineHeight: 18,
+  },
+  containerErro: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+    backgroundColor: '#FFFFFF',
+  },
+  tituloErro: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#333333',
+    marginTop: 15,
+  },
+  subtituloErro: {
+    fontSize: 14,
+    color: '#757575',
+    textAlign: 'center',
+    marginTop: 8,
+    paddingHorizontal: 20,
+  },
+  btnTentarNovamente: {
+    marginTop: 25,
+    backgroundColor: '#065294',
+    paddingVertical: 12,
+    paddingHorizontal: 30,
+    borderRadius: 8,
+    elevation: 2,
+  },
+  btnTentarNovamenteTexto: {
+    color: '#FFFFFF',
+    fontWeight: '600',
+    fontSize: 15,
   },
 
 });

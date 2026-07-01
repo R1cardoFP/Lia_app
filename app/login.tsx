@@ -45,15 +45,21 @@ export default function Login() {
       
       setResultado('Login feito com sucesso!'); 
       setIsError(false);
-    } catch (error: any) { 
+    } catch (error: any) {
       setIsError(true);
-      if (error.response) { 
-        const mensagemErro = error.response.data.message || 'Credenciais inválidas.'; 
-        setResultado(`${mensagemErro}`); 
-      } else { 
-        setResultado('Não foi possível conectar ao servidor. Verifique a rede.'); 
-      } 
-    } finally {
+      const res = error.response;
+
+      if (!res) {
+        setResultado('Não foi possível conectar ao servidor. Verifique a rede.');
+      } else if (res.status >= 500) {
+        setResultado('Erro no servidor, tente novamente mais tarde.');
+      } else if (res.status === 422 && res.data?.errors) {
+        const primeiroErro = (Object.values(res.data.errors)[0] as string[])?.[0];
+        setResultado(primeiroErro || 'Verifique os dados introduzidos.');
+      } else {
+        setResultado(res.data?.message || 'Credenciais inválidas.');
+      }
+    }finally {
       setLoading(false);
     }
   }; 

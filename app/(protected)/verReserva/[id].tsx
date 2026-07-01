@@ -180,6 +180,11 @@ export default function DetalheReservaPage() {
 
       {/* Header */}
       <View style={styles.header}>
+
+      <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+          <Ionicons name="arrow-back" size={24} color="#0d1f30" />
+        </TouchableOpacity>
+
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', flex: 1 }}>
           
           {/* Bloco de Títulos (coluna) */}
@@ -339,8 +344,8 @@ export default function DetalheReservaPage() {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: '#ffffff' },
-  header: { backgroundColor: '#fff', paddingHorizontal: 20, paddingTop: 20, paddingBottom: 13, flexDirection: 'row', },
-  headerTitle: { fontSize: 22, fontWeight: '800', color: '#0d1f30' },
+  header: { backgroundColor: '#fff', paddingHorizontal: 20, paddingTop: 20, paddingBottom: 13, flexDirection: 'row', alignItems: 'center' },
+  backButton: { marginRight: 12, justifyContent: 'center', alignItems: 'center' },
   headerSubtitle: { fontSize: 12, color: '#7a94aa', marginTop: 2 },
   btnLimparTudo: { 
     paddingVertical: 6, 

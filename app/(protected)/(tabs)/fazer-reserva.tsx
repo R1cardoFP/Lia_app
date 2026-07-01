@@ -179,49 +179,38 @@ export default function FazerReserva() {
     );
   };
 
-  // Função para calcular a quantidade de dias/repetições entre as datas
-  const calcularDias = () => {
+
+  const formatarData = (s: string) => (s ? s.split('-').reverse().join('/') : '--');
+
+   const calcularNumeroDias = () => {
     if (!reserva.dataInicio || !reserva.dataFim) return 1;
-    
-    const inicio = new Date(reserva.dataInicio);
-    const fim = new Date(reserva.dataFim);
-    
-    if (inicio > fim) return 1;
+    const start = new Date(reserva.dataInicio + 'T00:00:00');
+    const end = new Date(reserva.dataFim + 'T00:00:00');
+    if (isNaN(start.getTime()) || isNaN(end.getTime())) return 1;
 
-    // Se for CÍCLICA, contamos apenas os dias específicos da semana no intervalo
-    if (reserva.isCiclica && reserva.diaCiclico !== null) {
-      let totalDiasCiclicos = 0;
-      let dataAtual = new Date(inicio);
-
-      while (dataAtual <= fim) {
-        if (dataAtual.getDay() === reserva.diaCiclico) {
-          totalDiasCiclicos++;
-        }
-        dataAtual.setDate(dataAtual.getDate() + 1);
-      }
-
-      return totalDiasCiclicos > 0 ? totalDiasCiclicos : 1;
+    // Não cíclica: diferença de dias (igual ao backend), mínimo 1
+    if (!reserva.isCiclica || reserva.diaCiclico === null || reserva.diaCiclico === undefined) {
+      const diff = Math.round((end.getTime() - start.getTime()) / 86400000);
+      return diff <= 0 ? 1 : diff;
     }
-
-    // Se NÃO for cíclica, mantém o cálculo normal de dias corridos
-    const diferencaTempo = fim.getTime() - inicio.getTime();
-    const diferencaDias = Math.ceil(diferencaTempo / (1000 * 60 * 60 * 24)) + 1;
-    return diferencaDias > 0 ? diferencaDias : 1;
+    // Cíclica: conta as ocorrências do dia da semana no intervalo
+    let count = 0;
+    const d = new Date(start);
+    while (d <= end) {
+      if (d.getDay() === reserva.diaCiclico) count++;
+      d.setDate(d.getDate() + 1);
+    }
+    return count === 0 ? 1 : count;
   };
 
-  // Função para calcular o custo estimado total em tempo real
-  const calcularCustoTotalEstimado = () => {
-    if (!reserva.itens || reserva.itens.length === 0) return '0.00';
-    
-    const totalPorDia = reserva.itens.reduce((acumulador: number, item: any) => {
-      const precoUnidade = Number(item.preco || item.price_day || 20);
-      const quantidade = Number(item.quantidadeSelecionada || 1);
-      return acumulador + (precoUnidade * quantidade);
-    }, 0);
+  const somaPorDia = reserva.itens.reduce(
+    (acc: number, i: any) => acc + Number(i.preco || i.price_day || 20) * i.quantidadeSelecionada,
+    0
+  );
+  const numeroDias = calcularNumeroDias();
+  const totalEstimado = somaPorDia * numeroDias;
+  const labelCiclico = DIAS_DA_SEMANA.find(d => d.id === reserva.diaCiclico)?.label;
 
-    const dias = calcularDias();
-    return (totalPorDia * dias).toFixed(2);
-  };
 
   // ========================================================
   // RENDERIZAÇÃO 1: FORMULÁRIO COM DATE PICKERS E SELECTS
@@ -421,11 +410,14 @@ export default function FazerReserva() {
   // ========================================================
   return (
     <SafeAreaView style={styles.safeArea}>
+      <StatusBar backgroundColor="#ffffff" barStyle="dark-content" />
+
+      {/* HEADER */}
       <View style={styles.headerCarrinho}>
         <View style={{ flex: 1, marginRight: 10 }}>
           <Text style={styles.tituloPrincipal}>A tua Reserva</Text>
-          <Text style={[styles.subtituloPrincipal, { color: '#00a385', fontWeight: '600' }]} numberOfLines={1}>
-            Período: {reserva.dataInicio} a {reserva.dataFim}
+          <Text style={styles.subtituloPrincipal}>
+            {reserva.itens.length} {reserva.itens.length === 1 ? 'equipamento' : 'equipamentos'}
           </Text>
         </View>
         <TouchableOpacity style={styles.btnLimparTudo} onPress={handleCancelarReserva}>
@@ -433,34 +425,58 @@ export default function FazerReserva() {
         </TouchableOpacity>
       </View>
 
-      
-      
       <View style={styles.corpoFormulario}>
+
+     {/* Aviso: sem custo para o aluno */}
         <View style={styles.avisoIpvcContainer}>
-        {/* ESTE É O ÍCONE DE INFORMAÇÃO */}
-        <Ionicons name="information-circle-outline" size={20} color="#00a385" style={{ marginRight: 10 }} />
-        
-        <Text style={styles.avisoIpvcTexto}>
-          As reservas são totalmente isentas de custos para os alunos do IPVC.
-        </Text>
-      </View>
+          <Ionicons name="information-circle-outline" size={20} color="#00a385" style={{ marginRight: 10 }} />
+          <Text style={styles.avisoIpvcTexto}>
+            Sem custo para o aluno — o valor é imputado ao centro de custo selecionado.
+          </Text>
+        </View>
+
+
         <FlatList
+          style={{ flex: 1 }}
           data={reserva.itens}
           keyExtractor={(item, index) => String(item.id) + (item.is_kit ? '-kit' : '-item') + index}
-          // MODIFICADO: Aumentado de 50 para 150 para os itens não ficarem escondidos atrás da barra fixa
-          contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 50 }}
+          contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: tabBarHeight + 140 }}
+          showsVerticalScrollIndicator={false}
+
           ListHeaderComponent={() => (
             <View style={styles.cardInfoPrincipal}>
-              <Text style={styles.tituloDataTitle}>Motivo/Justificação</Text>
-              <Text style={styles.textoMotivo}>{reserva.motivo}</Text>
-              
-              {reserva.isCiclica && reserva.diaCiclico !== null && (
-                <View style={styles.motivoContainer}>
-                  <Text style={styles.labelSecundario}>REPETIÇÃO</Text> 
-                  <Text style={[styles.motivoTexto, { marginTop: 4 }]}>
-                    Todas as {DIAS_DA_SEMANA.find(d => d.id === reserva.diaCiclico)?.label}s
-                  </Text>
+              {/* Período */}
+              <View style={styles.infoRow}>
+                <View style={styles.infoIcone}><Ionicons name="calendar-outline" size={18} color="#065294" /></View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.infoLabel}>PERÍODO</Text>
+                  <Text style={styles.infoValor}>{formatarData(reserva.dataInicio)} a {formatarData(reserva.dataFim)}</Text>
                 </View>
+              </View>
+
+              <View style={styles.infoDivider} />
+
+              {/* Motivo */}
+              <View style={styles.infoRow}>
+                <View style={styles.infoIcone}><Ionicons name="document-text-outline" size={18} color="#065294" /></View>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.infoLabel}>MOTIVO</Text>
+                  <Text style={styles.infoValor}>{reserva.motivo || '—'}</Text>
+                </View>
+              </View>
+
+              {/* Repetição (só se cíclica) */}
+              {reserva.isCiclica && reserva.diaCiclico !== null && (
+                <>
+                  <View style={styles.infoDivider} />
+                  <View style={styles.infoRow}>
+                    <View style={styles.infoIcone}><Ionicons name="repeat" size={18} color="#065294" /></View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.infoLabel}>REPETIÇÃO</Text>
+                      <Text style={styles.infoValor}>Todas as {labelCiclico}s</Text>
+                    </View>
+                  </View>
+                </>
               )}
             </View>
           )}
@@ -478,19 +494,13 @@ export default function FazerReserva() {
           renderItem={({ item, index }) => {
             const isFirstItem = !item.is_kit && index === 0;
             const isFirstKit = item.is_kit && (index === 0 || !reserva.itens[index - 1]?.is_kit);
-
             return (
               <View style={{ marginBottom: 2 }}>
-                {isFirstItem && (
-                  <Text style={styles.sectionTitle}>ITENS ADICIONADOS</Text>
-                )}
+                {isFirstItem && <Text style={styles.sectionTitle}>ITENS ADICIONADOS</Text>}
+                {isFirstKit && <Text style={[styles.sectionTitle, { marginTop: 22 }]}>KITS ADICIONADOS</Text>}
 
-                {isFirstKit && (
-                  <Text style={[styles.sectionTitle, { marginTop: 15 }]}>KITS ADICIONADOS</Text>
-                )}
-
-                <TouchableHighlight 
-                  key={`${item.is_kit ? 'kit' : 'item'}-${item.id}-${index}`} 
+                <TouchableHighlight
+                  key={`${item.is_kit ? 'kit' : 'item'}-${item.id}-${index}`}
                   style={styles.cardLista}
                   underlayColor="#E8EAF6"
                   onPress={() => router.push(`/detalhes/${item.id}?tipo=${item.is_kit ? 'kit' : 'item'}`)}
@@ -509,12 +519,8 @@ export default function FazerReserva() {
                       <Text style={styles.cardSubtitulo} numberOfLines={1}>{item.model || item.description || 'Sem descrição.'}</Text>
                       <Text style={styles.textoPreco}>{Number(item.preco || item.price_day || 20).toFixed(2)}€ / dia</Text>
                     </View>
-
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-                      <View style={styles.badgeQtd}>
-                        <Text style={styles.badgeQtdText}>{item.quantidadeSelecionada}x</Text>
-                      </View>
-                      
+                      <View style={styles.badgeQtd}><Text style={styles.badgeQtdText}>{item.quantidadeSelecionada}x</Text></View>
                       <TouchableOpacity style={styles.btnRemoverItem} onPress={() => removerItem(item.id, item.is_kit)}>
                         <Ionicons name="trash-outline" size={20} color="#E53935" />
                       </TouchableOpacity>
@@ -527,18 +533,16 @@ export default function FazerReserva() {
         />
       </View>
 
-      {/* MODIFICADO: A BottomBar fixa agora está aqui no ecrã do carrinho, onde deve estar */}
+      {/* BARRA FIXA COM TOTAL + SUBMETER */}
       {reserva.itens.length > 0 && (
-        <View style={styles.bottomBar}>
+        <View style={[styles.bottomBar, { paddingBottom: tabBarHeight + 12 }]}>
           <View>
-            <Text style={styles.precoLabel}>Custo Total da Reserva</Text>
-            <Text style={styles.precoValor}>
-              {calcularCustoTotalEstimado()} €
-            </Text>
+            <Text style={styles.totalLabel}>Total estimado</Text>
+            <Text style={styles.totalValor}>{totalEstimado.toFixed(2)}€</Text>
+            <Text style={styles.totalSub}>{numeroDias} {numeroDias === 1 ? 'dia' : 'dias'} · {somaPorDia.toFixed(2)}€/dia</Text>
           </View>
-
-          <TouchableOpacity 
-            style={[styles.btnSubmeterFinal, submitting && { opacity: 0.7 }]} 
+          <TouchableOpacity
+            style={[styles.btnConfirmar, submitting && { opacity: 0.7 }]}
             onPress={handleConfirmarReservaFinal}
             disabled={submitting}
           >
@@ -546,8 +550,8 @@ export default function FazerReserva() {
               <ActivityIndicator color="#FFF" />
             ) : (
               <>
-                <Ionicons name="checkmark-circle-outline" size={18} color="#FFF" style={{ marginRight: 6 }} />
-                <Text style={styles.btnSubmeterFinalText}>Submeter</Text>
+                <Ionicons name="checkmark-circle-outline" size={20} color="#FFF" style={{ marginRight: 6 }} />
+                <Text style={styles.btnConfirmarText}>Submeter</Text>
               </>
             )}
           </TouchableOpacity>
@@ -599,13 +603,6 @@ const styles = StyleSheet.create({
     alignItems: 'center', 
     padding: 12, 
     flex: 1 
-  },
-  sectionTitle: { 
-    fontSize: 12, 
-    fontWeight: 'bold', 
-    color: '#9E9E9E', 
-    marginBottom: 12, 
-    letterSpacing: 0.5 
   },
   imagemListaMock: { 
     width: 65, 
@@ -779,17 +776,6 @@ const styles = StyleSheet.create({
     fontSize: 15,                 
     fontWeight: '700',            
   },
-  cardInfoPrincipal: { 
-    backgroundColor: '#fff', 
-    borderRadius: 16, 
-    marginTop: 16, 
-    padding: 16, 
-    shadowColor: '#000', 
-    shadowOffset: { width: 0, height: 2 }, 
-    shadowOpacity: 0.05, 
-    shadowRadius: 8, 
-    elevation: 2 
-  },
   modalOverlay: { 
     flex: 1, 
     backgroundColor: 'rgba(0, 0, 0, 0.5)', 
@@ -840,13 +826,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold', 
     color: '#E53935' 
   },
-  headerCarrinho: { 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
-    alignItems: 'center', 
-    padding: 20, 
-    backgroundColor: '#FFF' 
-  },
   btnLimparTudo: { 
     paddingVertical: 6, 
     paddingHorizontal: 12, 
@@ -885,66 +864,28 @@ const styles = StyleSheet.create({
   btnRemoverItem: { 
     padding: 4 
   },
-  bottomBar: { 
-  position: 'absolute', 
-  bottom: 0, // Se continuar tapado, temporariamente muda para 20 ou 30 para teste
-  left: 0, 
-  right: 0, 
-  backgroundColor: '#FFF', 
-  flexDirection: 'row', 
-  justifyContent: 'space-between', 
-  alignItems: 'center', 
-  paddingHorizontal: 20, 
-  paddingTop: 15, 
-  paddingBottom: 120, // Aumentado para empurrar o texto e botão para cima das barras nativas
-  borderTopWidth: 1, 
-  borderTopColor: '#EEEEEE', 
-  elevation: 20,     // Aumentado o z-index/elevation para garantir que fica no topo de tudo
-  zIndex: 999,       // Adicionado explicitamente para iOS
-  shadowColor: '#000', 
-  shadowOffset: { width: 0, height: -4 }, 
-  shadowOpacity: 0.1, 
-  shadowRadius: 10 
-},
-  precoLabel: { 
-    fontSize: 13, 
-    color: '#757575', 
-    marginBottom: 2 
-  },
-  precoValor: { 
-    fontSize: 22, 
-    fontWeight: 'bold', 
-    color: '#065294' 
-  },
-  btnSubmeterFinal: {
-    backgroundColor: '#065294',
-    paddingHorizontal: 22,
-    paddingVertical: 12,
-    borderRadius: 10,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  btnSubmeterFinalText: {
-    color: '#FFF',
-    fontWeight: 'bold',
-    fontSize: 15
-  },
+  sectionTitle: { fontSize: 12, fontWeight: 'bold', color: '#9E9E9E', marginTop: 20, marginBottom: 12, letterSpacing: 0.5 },
 
-avisoIpvcContainer: {
-  flexDirection: 'row',
-  backgroundColor: 'rgba(0, 163, 133, 0.12)', 
-  marginHorizontal: 20,
-  marginTop: 15,
-  padding: 12,
-  borderRadius: 12,
-  alignItems: 'center',
-},
-avisoIpvcTexto: {
-  color: '#00a385', 
-  fontSize: 13,
-  fontWeight: '600', 
-  flex: 1, 
-  lineHeight: 18,
-},
+  headerCarrinho: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingTop: 20, paddingBottom: 13, backgroundColor: '#FFF' },
+
+  cardInfoPrincipal: { backgroundColor: '#fff', borderRadius: 16, marginTop: 16, padding: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2 },
+  infoRow: { flexDirection: 'row', alignItems: 'center' },
+  infoIcone: { width: 38, height: 38, borderRadius: 10, backgroundColor: '#eaf2fb', justifyContent: 'center', alignItems: 'center', marginRight: 12 },
+  infoLabel: { fontSize: 10.5, fontWeight: '800', color: '#8a9fb4', letterSpacing: 0.5, marginBottom: 2 },
+  infoValor: { fontSize: 14, color: '#0d1f30', fontWeight: '600' },
+  infoDivider: { height: 1, backgroundColor: '#eef2f7', marginVertical: 12 },
+
+  bottomBar: {
+    position: 'absolute', left: 0, right: 0, bottom: 0,
+    backgroundColor: '#fff', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 20, paddingTop: 14, borderTopWidth: 1, borderTopColor: '#eef2f7',
+    shadowColor: '#000', shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.06, shadowRadius: 10, elevation: 12,
+  },
+  totalLabel: { fontSize: 11, color: '#7a94aa', fontWeight: '600' },
+  totalValor: { fontSize: 22, fontWeight: '800', color: '#065294', marginTop: 1 },
+  totalSub: { fontSize: 11, color: '#9E9E9E', marginTop: 1 },
+  btnConfirmar: { backgroundColor: '#065294', flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 22, height: 50, borderRadius: 12 },
+  btnConfirmarText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  avisoIpvcContainer: { flexDirection: 'row', backgroundColor: 'rgba(0,163,133,0.12)', marginHorizontal: 20, marginTop: 15, padding: 12, borderRadius: 12, alignItems: 'center' },
+  avisoIpvcTexto: { color: '#00a385', fontSize: 13, fontWeight: '600', flex: 1, lineHeight: 18 },
 });

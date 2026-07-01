@@ -1,7 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from 'expo-router';
 import React, { useCallback, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Calendar, LocaleConfig } from 'react-native-calendars';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import api from '../../../services/api';
@@ -43,6 +43,19 @@ export default function Disponibilidade() {
     }
   };
 
+  const formatarDataLonga = (dateStr: string) => {
+    const d = new Date(dateStr + 'T00:00:00');
+    const nomeDia = LocaleConfig.locales['pt'].dayNames[d.getDay()];
+    const [a, m, dd] = dateStr.split('-');
+    return `${nomeDia}, ${dd}/${m}/${a}`;
+  };
+
+  const dataCurta = (dateStr: string) => dateStr.split('-').reverse().join('/');
+
+  // Próximo dia disponível (hoje ou futuro)
+  const hoje = new Date().toISOString().split('T')[0];
+  const proximoDia = Object.keys(horarios).filter(d => d >= hoje).sort()[0] || null;
+
   // Marca a verde os dias com disponibilidade
   const datasMarcadas: any = Object.keys(horarios).reduce((acc: any, data) => {
     acc[data] = {
@@ -67,32 +80,46 @@ export default function Disponibilidade() {
 
   if (loading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color="#005596" />
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f4f7fc' }}>
+        <ActivityIndicator size="large" color="#065294" />
       </View>
     );
   }
 
- return (
+  return (
     <SafeAreaView style={styles.safeArea}>
-      {/* Header Fixo fora do Scroll para colar no topo */}
+      {/* Header fixo */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Disponibilidade do Técnico</Text>
         <Text style={styles.headerSubtitle}>
-          Consulta os horários onde podes receber e devolver o material reservado
+          Consulta os horários para receber e devolver o material reservado
         </Text>
       </View>
 
-      {/* Conteúdo em Scroll com o fundo correto */}
       <View style={styles.corpoConteudo}>
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: 20 }}>
-          
-          {/* Texto que passou para fora do Header */}
-         <Text style={styles.textoInformativo1}>
-            Os dias a verde indicam que o técnico está disponível.
-          </Text>
-          <Text style={[styles.textoInformativo2, { fontWeight: '600' }]}>
-            Toca num dia para ver os horários.
+
+          {/* Cartão: próximo horário disponível */}
+          {proximoDia && (
+            <TouchableOpacity
+              activeOpacity={0.85}
+              onPress={() => setDiaSelecionado(proximoDia)}
+              style={styles.proximoCard}
+            >
+              <View style={styles.proximoIcone}>
+                <Ionicons name="calendar" size={22} color="#065294" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.proximoLabel}>PRÓXIMO HORÁRIO</Text>
+                <Text style={styles.proximoData}>{formatarDataLonga(proximoDia)}</Text>
+                <Text style={styles.proximoHoras} numberOfLines={1}>{horarios[proximoDia]}</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color="#9bb0c4" />
+            </TouchableOpacity>
+          )}
+
+          <Text style={styles.textoInformativo}>
+            Toca num dia a verde para ver os horários.
           </Text>
 
           <View style={styles.calendarioContainer}>
@@ -101,8 +128,8 @@ export default function Disponibilidade() {
               markedDates={datasMarcadas}
               onDayPress={(day) => setDiaSelecionado(day.dateString)}
               theme={{
-                todayTextColor: '#005596',
-                arrowColor: '#005596',
+                todayTextColor: '#065294',
+                arrowColor: '#065294',
                 textMonthFontWeight: 'bold',
               }}
             />
@@ -116,19 +143,32 @@ export default function Disponibilidade() {
           <Text style={styles.seccaoTitulo}>Horários</Text>
           <View style={styles.cardHorario}>
             {!diaSelecionado ? (
-              <Text style={styles.horarioVazio}>Seleciona um dia no calendário para ver os horários.</Text>
+              <View style={styles.vazioContainer}>
+                <Ionicons name="hand-left-outline" size={26} color="#b0bfcc" />
+                <Text style={styles.horarioVazio}>Seleciona um dia no calendário para ver os horários.</Text>
+              </View>
             ) : horarios[diaSelecionado] ? (
               <>
-                <View style={styles.horarioHeader}>
-                  <Ionicons name="time-outline" size={20} color="#2E7D32" />
-                  <Text style={styles.horarioData}>{diaSelecionado.split('-').reverse().join('/')}</Text>
+                <View style={styles.horarioTopo}>
+                  <View style={styles.horarioIconeCirculo}>
+                    <Ionicons name="time-outline" size={18} color="#2E7D32" />
+                  </View>
+                  <Text style={styles.horarioData}>{dataCurta(diaSelecionado)}</Text>
+                  <View style={styles.chipDisponivel}>
+                    <Text style={styles.chipDisponivelText}>Disponível</Text>
+                  </View>
                 </View>
                 <Text style={styles.horarioDescricao}>{horarios[diaSelecionado]}</Text>
               </>
             ) : (
-              <Text style={styles.horarioVazio}>Sem horário disponível neste dia.</Text>
+              <View style={styles.vazioContainer}>
+                <Ionicons name="close-circle-outline" size={26} color="#d99" />
+                <Text style={styles.horarioVazio}>Sem horário disponível neste dia.</Text>
+              </View>
             )}
           </View>
+
+          <View style={{ height: 20 }} />
         </ScrollView>
       </View>
     </SafeAreaView>
@@ -136,113 +176,54 @@ export default function Disponibilidade() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { 
-    flex: 1, 
-    backgroundColor: '#ffffff' // Força o topo da barra de estado a ser branco
-  },
-  header: { 
-    backgroundColor: '#fff', 
-    paddingHorizontal: 20, 
-    paddingTop: 20, 
-    paddingBottom: 20 
-  },
-  headerTitle: { 
-    fontSize: 22, 
-    fontWeight: '800', 
-    color: '#0d1f30' 
-  },
-  headerSubtitle: { 
-    fontSize: 12, 
-    color: '#7a94aa', 
-    marginTop: 4,
-    lineHeight: 16
-  },
-  corpoConteudo: {
-    flex: 1,
-    backgroundColor: '#f4f7fc' // Todo o resto do ecrã assume o azul/cinza claro
-  },
-  textoInformativo2: {
-    textAlign: 'center',
-    fontSize: 13,
-    color: '#5a7a9a',
-    marginBottom: 16,
-    lineHeight: 18,
-  },
-  textoInformativo1: { fontSize: 13, color: '#212121', textAlign: 'center', marginBottom: 10, marginTop: 15, lineHeight: 18, },
-  calendarioContainer: { 
-    backgroundColor: '#FFF', 
-    borderWidth: 1, 
-    borderColor: '#eaf0f8', 
-    borderRadius: 14, 
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.02,
-    shadowRadius: 8,
-    elevation: 1
-  },
-  legendaContainer: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    marginTop: 12 
-  },
-  legendaDot: { 
-    width: 14, 
-    height: 14, 
-    borderRadius: 4, 
-    backgroundColor: '#E8F5E9', 
-    borderWidth: 1, 
-    borderColor: '#2E7D32', 
-    marginRight: 8 
-  },
-  legendaTexto: { 
-    fontSize: 13, 
-    color: '#7a94aa' ,
-    fontWeight: '600'
-  },
-  seccaoTitulo: { 
-    fontSize: 12, 
-    fontWeight: 'bold', 
-    color: '#9E9E9E', 
-    marginTop: 24, 
-    marginBottom: 10,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5
-  },
+  safeArea: { flex: 1, backgroundColor: '#ffffff' },
+  header: { backgroundColor: '#fff', paddingHorizontal: 20, paddingTop: 20, paddingBottom: 18 },
+  headerTitle: { fontSize: 22, fontWeight: '800', color: '#0d1f30' },
+  headerSubtitle: { fontSize: 12, color: '#7a94aa', marginTop: 4, lineHeight: 16 },
+  corpoConteudo: { flex: 1, backgroundColor: '#f4f7fc' },
 
+ proximoCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EAF2FA',
+    borderWidth: 1,
+    borderColor: '#cfe0f0',
+    borderRadius: 14,
+    padding: 14,
+    gap: 12,
+    marginBottom: 18,
+  },
+  proximoIcone: {
+    width: 44, height: 44, borderRadius: 12,
+    backgroundColor: '#D6E6F5', justifyContent: 'center', alignItems: 'center',
+  },
+  proximoLabel: { fontSize: 10.5, fontWeight: '800', color: '#065294', letterSpacing: 0.5, marginBottom: 2 },
+  proximoData: { fontSize: 15, fontWeight: '700', color: '#0d1f30' },
+  proximoHoras: { fontSize: 13, color: '#5a7a9a', marginTop: 1 },
 
-  cardHorario: { 
-    backgroundColor: '#FFF', 
-    borderRadius: 14, 
-    padding: 16, 
-    borderWidth: 1, 
-    borderColor: '#eaf0f8',
-    shadowColor: '#000', 
-    shadowOffset: { width: 0, height: 2 }, 
-    shadowOpacity: 0.03, 
-    shadowRadius: 8, 
-    elevation: 2 
+  textoInformativo: { fontSize: 13, color: '#5a7a9a', textAlign: 'center', marginBottom: 12, fontWeight: '600' },
+
+  calendarioContainer: {
+    backgroundColor: '#FFF', borderWidth: 1, borderColor: '#eaf0f8', borderRadius: 14, overflow: 'hidden',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.02, shadowRadius: 8, elevation: 1,
   },
-  horarioHeader: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    marginBottom: 8 
+  legendaContainer: { flexDirection: 'row', alignItems: 'center', marginTop: 12 },
+  legendaDot: { width: 14, height: 14, borderRadius: 4, backgroundColor: '#E8F5E9', borderWidth: 1, borderColor: '#2E7D32', marginRight: 8 },
+  legendaTexto: { fontSize: 13, color: '#7a94aa', fontWeight: '600' },
+
+  seccaoTitulo: { fontSize: 12, fontWeight: 'bold', color: '#9E9E9E', marginTop: 24, marginBottom: 10, textTransform: 'uppercase', letterSpacing: 0.5 },
+
+  cardHorario: {
+    backgroundColor: '#FFF', borderRadius: 14, padding: 16, borderWidth: 1, borderColor: '#eaf0f8',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.03, shadowRadius: 8, elevation: 2,
   },
-  horarioData: { 
-    fontSize: 15, 
-    fontWeight: 'bold', 
-    color: '#2E7D32', 
-    marginLeft: 8 
-  },
-  horarioDescricao: { 
-    fontSize: 15, 
-    color: '#0d1f30', 
-    lineHeight: 22 
-  },
-  horarioVazio: { 
-    fontSize: 13, 
-    color: '#7a94aa', 
-    textAlign: 'center', 
-    paddingVertical: 10 
-  },
+  horarioTopo: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
+  horarioIconeCirculo: { width: 32, height: 32, borderRadius: 9, backgroundColor: '#E8F5E9', justifyContent: 'center', alignItems: 'center', marginRight: 10 },
+  horarioData: { fontSize: 15, fontWeight: 'bold', color: '#0d1f30', flex: 1 },
+  chipDisponivel: { backgroundColor: '#E8F5E9', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10 },
+  chipDisponivelText: { fontSize: 11, fontWeight: '700', color: '#2E7D32' },
+  horarioDescricao: { fontSize: 15, color: '#0d1f30', lineHeight: 22 },
+
+  vazioContainer: { alignItems: 'center', paddingVertical: 8, gap: 8 },
+  horarioVazio: { fontSize: 13, color: '#7a94aa', textAlign: 'center' },
 });

@@ -1,44 +1,76 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, ReactNode, useContext, useState } from 'react';
 
-const ReservaContext = createContext();
+// 1. Definir a estrutura de um Item/Kit dentro da reserva
+export interface ItemReserva {
+  id: number;
+  nome?: string;
+  name?: string; // para kits se usarem 'name'
+  is_kit: boolean;
+  price_day?: number | string | null;
+  quantidadeSelecionada: number;
+  [key: string]: any; // Permite outras propriedades dinâmicas do item
+}
 
-// Estrutura inicial de uma reserva vazia
-const estadoInicial = {
+// 2. Definir a estrutura do Estado da Reserva
+export interface EstadoReserva {
+  dataInicio: string;
+  dataFim: string;
+  motivo: string;
+  curso: string;
+  centroCusto: string | number;
+  isCiclica: boolean;
+  diaCiclico: number | string | null;
+  itens: ItemReserva[];
+}
+
+// 3. Definir o que o Contexto vai exportar para os ecrãs
+interface ReservaContextType {
+  reserva: EstadoReserva;
+  iniciarReserva: (dadosIniciais: Partial<EstadoReserva>) => void;
+  adicionarItem: (item: any, quantidade: number) => void;
+  removerItem: (itemId: number, isKit: boolean) => void;
+  limparReserva: () => void;
+  temReservaAtiva: boolean;
+}
+
+// Correção do erro 1: Passar valor inicial e tipar o Contexto
+const ReservaContext = createContext<ReservaContextType | undefined>(undefined);
+
+const estadoInicial: EstadoReserva = {
   dataInicio: '',
   dataFim: '',
   motivo: '',
   curso: '',
   centroCusto: '',
   isCiclica: false,
-  diaCiclico: '',
-  itens: [] 
+  diaCiclico: null,
+  itens: [] // Correção do erro 4: Agora o TS sabe que este array receberá itens
 };
 
-export function ReservaProvider({ children }) {
-  const [reserva, setReserva] = useState(estadoInicial);
+// Correção do erro 2: Tipar o children usando ReactNode
+export function ReservaProvider({ children }: { children: ReactNode }) {
+  const [reserva, setReserva] = useState<EstadoReserva>(estadoInicial);
 
-  // 1. Iniciar a reserva apenas com os dados do formulário (sem itens ainda)
-  const iniciarReserva = (dadosIniciais) => {
+  // Correção do erro 3: dadosIniciais tipados como Partial do estado
+  const iniciarReserva = (dadosIniciais: Partial<EstadoReserva>) => {
     setReserva({
       ...estadoInicial,
       ...dadosIniciais,
       itens: []
-    });
+    } as EstadoReserva);
   };
 
-  // 2. Adicionar um item ou kit ao carrinho da reserva
-  const adicionarItem = (item, quantidade) => {
+  const adicionarItem = (item: any, quantidade: number) => {
     setReserva((reservaAtual) => {
-      // Verificar se o item já existe na reserva para não o duplicar na lista
-      const itemExistenteIndex = reservaAtual.itens.findIndex(i => i.id === item.id && i.is_kit === item.is_kit);
+      const itemExistenteIndex = reservaAtual.itens.findIndex(
+        (i) => i.id === item.id && i.is_kit === item.is_kit
+      );
 
       let novosItens = [...reservaAtual.itens];
 
       if (itemExistenteIndex > -1) {
-        // Se já existe, apenas atualiza ou soma a quantidade
         novosItens[itemExistenteIndex].quantidadeSelecionada = quantidade;
       } else {
-        // Se é novo, adiciona o objeto com a propriedade da quantidade escolhida
         novosItens.push({
           ...item,
           quantidadeSelecionada: quantidade
@@ -49,20 +81,17 @@ export function ReservaProvider({ children }) {
     });
   };
 
-  // 3. Remover um item específico da reserva
-  const removerItem = (itemId, isKit) => {
+  const removerItem = (itemId: number, isKit: boolean) => {
     setReserva((reservaAtual) => ({
       ...reservaAtual,
-      itens: reservaAtual.itens.filter(i => !(i.id === itemId && i.is_kit === isKit))
+      itens: reservaAtual.itens.filter((i) => !(i.id === itemId && i.is_kit === isKit))
     }));
   };
 
-  // 4. Cancelar ou limpar a reserva por completo (Reset)
   const limparReserva = () => {
     setReserva(estadoInicial);
   };
 
-  // Verificar se existe uma sessão de reserva ativa a decorrer
   const temReservaAtiva = reserva.dataInicio !== '';
 
   return (
@@ -79,7 +108,6 @@ export function ReservaProvider({ children }) {
   );
 }
 
-// Hook personalizado para facilitar o uso nos ecrãs
 export function useReserva() {
   const context = useContext(ReservaContext);
   if (!context) {

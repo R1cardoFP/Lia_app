@@ -1,14 +1,14 @@
 import React, { createContext, ReactNode, useContext, useState } from 'react';
 
-// 1. Definir a estrutura de um Item/Kit dentro da reserva
+
 export interface ItemReserva {
   id: number;
   nome?: string;
-  name?: string; // para kits se usarem 'name'
+  name?: string; 
   is_kit: boolean;
   price_day?: number | string | null;
   quantidadeSelecionada: number;
-  [key: string]: any; // Permite outras propriedades dinâmicas do item
+  [key: string]: any; 
 }
 
 // 2. Definir a estrutura do Estado da Reserva

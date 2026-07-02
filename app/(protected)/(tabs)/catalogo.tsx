@@ -1,3 +1,4 @@
+import ErroConexao from '@/components/ErroConexao';
 import { useAuth } from "@/hooks/useAuth";
 import { Ionicons } from '@expo/vector-icons';
 import { router, useFocusEffect } from 'expo-router';
@@ -143,21 +144,13 @@ export default function Catalogo() {
 
 
   if (erroConexao && !loadingInitial) {
-    return (
-      <View style={styles.containerErro}>
-        <Ionicons name="cloud-offline-outline" size={60} color="#E53935" />
-        <Text style={styles.tituloErro}>Sem conexão ao servidor</Text>
-        <Text style={styles.subtituloErro}>Não foi possível carregar catálogo. Verifica o Wi-Fi ou dados móveis.</Text>
-        
-        <TouchableOpacity 
-          style={styles.btnTentarNovamente} 
-          onPress={() => carregarCatalogo(1, categoriaAtiva, pesquisa)}
-        >
-          <Text style={styles.btnTentarNovamenteTexto}>Tentar Novamente</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
+  return (
+    <ErroConexao 
+      mensagem="Não foi possível carregar o catálogo. Verifica o Wi-Fi ou dados móveis."
+      onTentarNovamente={() => carregarCatalogo(1, categoriaAtiva, pesquisa)} 
+    />
+  );
+}
 
 
   if (loadingInitial && categoriasDB.length <= 1 && equipamentosItens.length === 0) {

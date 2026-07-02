@@ -1,3 +1,4 @@
+import ErroConexao from '@/components/ErroConexao';
 import api from "@/services/api";
 import { useRouter } from 'expo-router';
 import React, { useEffect, useState } from 'react';
@@ -19,6 +20,7 @@ export default function Reservas() {
   const [refreshing, setRefreshing] = useState(false);
   const [reservas, setReservas] = useState<Reserva[]>([]);
   const [filtro, setFiltro] = useState('Todas');
+  const [erroConexao, setErroConexao] = useState(false);
 
   const fetchReservas = async () => {
     try {
@@ -28,6 +30,7 @@ export default function Reservas() {
       }
     } catch (error: any) {
       console.log("Erro ao ir buscar as reservas:", error.response?.data || error.message);
+      setErroConexao(true);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -116,6 +119,17 @@ export default function Reservas() {
   const totalReservas = reservas.length;
   const ativasAgora = reservas.filter(r => getStatusStyles(r.reserve_state_id).grupo === 'Ativas').length;
 
+  if (erroConexao && !loading) {
+    return (
+      <ErroConexao 
+        onTentarNovamente={() => {
+          setLoading(true);
+          fetchReservas();
+        }} 
+      />
+    );
+  }
+
   if (loading) {
     return (
       <View style={styles.containerLoading}>
@@ -123,6 +137,8 @@ export default function Reservas() {
       </View>
     );
   }
+
+  
 
   return (
     <SafeAreaView style={styles.safeArea}>

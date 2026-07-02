@@ -86,6 +86,31 @@ export default function FazerReserva() {
       return;
     }
 
+
+    if (isCiclica && diaCiclico !== null) {
+    const start = new Date(dataInicio + 'T00:00:00');
+    const end = new Date(dataFim + 'T00:00:00');
+    
+    let diaEncontrado = false;
+    const d = new Date(start);
+    
+    while (d <= end) {
+      if (d.getDay() === diaCiclico.id) {
+        diaEncontrado = true;
+        break; 
+      }
+      d.setDate(d.getDate() + 1);
+    }
+
+    if (!diaEncontrado) {
+      Alert.alert(
+        'Período Inválido', 
+        `O dia escolhido (${diaCiclico.label}) não ocorre nenhuma vez entre as datas ${formatarData(dataInicio)} e ${formatarData(dataFim)}.`
+      );
+      return; // Trava o utilizador aqui!
+    }
+  }
+
     iniciarReserva({
       dataInicio,
       dataFim,

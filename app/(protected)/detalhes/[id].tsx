@@ -257,12 +257,14 @@ export default function DetalhesEquipamento() {
 
       {/* --- BOTTOM BAR INTELIGENTE --- */}
       <View style={[styles.bottomBar, { paddingBottom: Math.max(insets.bottom + 10, 20) }]}>
-       <View>
-          <Text style={styles.precoLabel}>Preço Estimado</Text>
-          <Text style={styles.precoValor}>
-            {item.preco && item.preco !== 'Não definido' ? `${item.preco} € / dia` : 'Não definido'}
-          </Text>
-        </View>
+  <View>
+    <Text style={styles.precoLabel}>Preço Estimado</Text>
+    <Text style={styles.precoValor}>
+      {item.price_day && item.price_day !== 'Não definido' 
+        ? `${item.price_day} € / dia` 
+        : 'Não definido'}
+    </Text>
+  </View>
         {temReservaAtiva ? (
           // INTERFACE SE TIVER RESERVA ATIVA: SELETOR + BOTAO ADICIONAR
           <View style={styles.containerAcoesReserva}>

@@ -121,7 +121,12 @@ export default function FazerReserva() {
     );
   };
 
-  const handleConfirmarReservaFinal = async () => {
+ const handleConfirmarReservaFinal = async () => {
+    // 1. Bloqueia imediatamente se algum item tiver preço inválido
+    if (validarECalcularSomaPorDia() === null) {
+      return; 
+    }
+
     if (reserva.itens.length === 0) {
       Alert.alert('Carrinho Vazio', 'Tens de adicionar pelo menos um equipamento do catálogo.');
       return;
@@ -168,7 +173,7 @@ export default function FazerReserva() {
                 ]);
               }
             } catch (error: any) {
-              const mensagemErro = error.response?.data?.message || 'Ocorreu um problema ao submeter a reserva no servidor.';
+              const mensagemErro = error.response?.data?.message || 'Ocorreu um problem ao submeter a reserva no servidor.';
               Alert.alert('Erro ao Reservar', mensagemErro);
             } finally {
               setSubmitting(false);
@@ -182,18 +187,23 @@ export default function FazerReserva() {
 
   const formatarData = (s: string) => (s ? s.split('-').reverse().join('/') : '--');
 
-   const calcularNumeroDias = () => {
+  const calcularNumeroDias = () => {
     if (!reserva.dataInicio || !reserva.dataFim) return 1;
     const start = new Date(reserva.dataInicio + 'T00:00:00');
     const end = new Date(reserva.dataFim + 'T00:00:00');
     if (isNaN(start.getTime()) || isNaN(end.getTime())) return 1;
 
-    // Não cíclica: diferença de dias (igual ao backend), mínimo 1
+    // Se as datas forem iguais, é apenas 1 dia
+    if (reserva.dataInicio === reserva.dataFim) return 1;
+
+    // Não cíclica: cálculo inclusivo (ex: 10 a 12 -> (12-10) + 1 = 3 dias)
     if (!reserva.isCiclica || reserva.diaCiclico === null || reserva.diaCiclico === undefined) {
-      const diff = Math.round((end.getTime() - start.getTime()) / 86400000);
-      return diff <= 0 ? 1 : diff;
+      const diffTime = end.getTime() - start.getTime();
+      const diffDays = Math.round(diffTime / 86400000);
+      return diffDays + 1; 
     }
-    // Cíclica: conta as ocorrências do dia da semana no intervalo
+
+    // Cíclica: conta as ocorrências do dia da semana no intervalo (já é inclusivo pelo ciclo)
     let count = 0;
     const d = new Date(start);
     while (d <= end) {
@@ -203,12 +213,25 @@ export default function FazerReserva() {
     return count === 0 ? 1 : count;
   };
 
-  const somaPorDia = reserva.itens.reduce(
-    (acc: number, i: any) => acc + Number(i.preco || i.price_day || 20) * i.quantidadeSelecionada,
-    0
-  );
+  // Correção para usar apenas price_day
+  const validarECalcularSomaPorDia = () => {
+    let soma = 0;
+    for (const i of reserva.itens) {
+      // Se não existir price_day ou não for um número válido
+      if (i.price_day === null || i.price_day === undefined || isNaN(Number(i.price_day))) {
+        Alert.alert('Erro no Preço', `O equipamento "${i.nome || 'Kit'}" não tem um preço diário definido. Não é possível concluir a reserva.`);
+        return null; // Retorna null para saberes que falhou
+      }
+      soma += Number(i.price_day) * i.quantidadeSelecionada;
+    }
+    return soma;
+  };
+
+  const somaPorDia = validarECalcularSomaPorDia();
   const numeroDias = calcularNumeroDias();
-  const totalEstimado = somaPorDia * numeroDias;
+  // Se falhou a validação, o total fica 0 (ou podes bloquear o botão de submeter caso somaPorDia seja null)
+  const totalEstimado = somaPorDia !== null ? somaPorDia * numeroDias : 0;
+
   const labelCiclico = DIAS_DA_SEMANA.find(d => d.id === reserva.diaCiclico)?.label;
 
 
@@ -517,7 +540,9 @@ export default function FazerReserva() {
                     <View style={styles.listaTextoInfo}>
                       <Text style={styles.cardTitulo} numberOfLines={1}>{item.nome}</Text>
                       <Text style={styles.cardSubtitulo} numberOfLines={1}>{item.model || item.description || 'Sem descrição.'}</Text>
-                      <Text style={styles.textoPreco}>{Number(item.preco || item.price_day || 20).toFixed(2)}€ / dia</Text>
+                      <Text style={styles.textoPreco}>
+                        {Number(item.price_day || 0).toFixed(2)}€ / dia
+                      </Text>
                     </View>
                     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
                       <View style={styles.badgeQtd}><Text style={styles.badgeQtdText}>{item.quantidadeSelecionada}x</Text></View>
@@ -534,17 +559,20 @@ export default function FazerReserva() {
       </View>
 
       {/* BARRA FIXA COM TOTAL + SUBMETER */}
+     {/* BARRA FIXA COM TOTAL + SUBMETER */}
       {reserva.itens.length > 0 && (
         <View style={[styles.bottomBar, { paddingBottom: tabBarHeight + 12 }]}>
           <View>
             <Text style={styles.totalLabel}>Total estimado</Text>
             <Text style={styles.totalValor}>{totalEstimado.toFixed(2)}€</Text>
-            <Text style={styles.totalSub}>{numeroDias} {numeroDias === 1 ? 'dia' : 'dias'} · {somaPorDia.toFixed(2)}€/dia</Text>
+            <Text style={styles.totalSub}>
+              {numeroDias} {numeroDias === 1 ? 'dia' : 'dias'} · {somaPorDia !== null ? somaPorDia.toFixed(2) : '0.00'}€/dia
+            </Text>
           </View>
           <TouchableOpacity
-            style={[styles.btnConfirmar, submitting && { opacity: 0.7 }]}
+            style={[styles.btnConfirmar, (submitting || somaPorDia === null) && { opacity: 0.5 }]}
             onPress={handleConfirmarReservaFinal}
-            disabled={submitting}
+            disabled={submitting || somaPorDia === null}
           >
             {submitting ? (
               <ActivityIndicator color="#FFF" />

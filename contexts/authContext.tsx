@@ -40,20 +40,17 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [user, setUser] = useState<User | null>(null);
   const [isReady, setIsReady] = useState(false);
 
-  // Executa ao abrir a aplicação para validar o token existente
   useEffect(() => {
     async function loadUser() {
       try {
         const token = await SecureStore.getItemAsync("authToken");
         
         if (token) {
-          // Busca os dados do utilizador atualizados na rota protegida /me
           const response = await api.get("/me");
           setUser(response.data);
         }
       } catch (err) {
         console.log("Erro ao validar sessão anterior:", err);
-        // Se o token expirou ou deu erro, limpa o estado por segurança
         await SecureStore.deleteItemAsync("authToken");
         setUser(null);
       } finally {
@@ -66,10 +63,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
   async function login(email: string, password: string) {
     try {
-      // Bate na tua rota exata: POST /login
       const response = await api.post("/login", {
         email,
-        password, // Em conformidade com o teu request->validate do Laravel
+        password,
       });
 
       if (response.data.status === "success") {
@@ -79,7 +75,6 @@ export function AuthProvider({ children }: PropsWithChildren) {
         await SecureStore.setItemAsync("authToken", token);
         setUser(userResponse);
         
-        // Redireciona para o teu catálogo dentro das tabs protegidas
         router.replace("/(protected)/(tabs)/catalogo");
       }
     } catch (err: any) {

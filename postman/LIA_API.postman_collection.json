@@ -1,0 +1,643 @@
+{
+  "info": {
+    "_postman_id": "a1b2c3d4-e5f6-4789-9abc-def012345678",
+    "name": "LIA Reservas API",
+    "description": "Coleção completa de endpoints e testes automatizados para a API Laravel (Sanctum) do LIA Reservas (IPVC).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "01. Autenticação (Auth)",
+      "item": [
+        {
+          "name": "Login (Guarda Token Automático)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code é 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "const json = pm.response.json();",
+                  "pm.test('Login com sucesso e token presente', function () {",
+                  "    pm.expect(json.status).to.eql('success');",
+                  "    pm.expect(json.token).to.be.a('string').and.not.be.empty;",
+                  "    pm.expect(json.user).to.be.an('object');",
+                  "});",
+                  "if (json.token) {",
+                  "    pm.environment.set('token', json.token);",
+                  "    console.log('Token guardado no Environment!');",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{email}}\",\n  \"password\": \"{{password}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "login"]
+            }
+          }
+        },
+        {
+          "name": "Login Inválido (Teste Negativo 401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code é 401 Unauthorized', function () {",
+                  "    pm.response.to.have.status(401);",
+                  "});",
+                  "pm.test('Mensagem de erro esperada', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.status).to.eql('error');",
+                  "    pm.expect(json.message).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"invalido@ipvc.pt\",\n  \"password\": \"password_errada\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "login"]
+            }
+          }
+        },
+        {
+          "name": "Register (Criar Conta)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status é 201 Created ou 422 se email já existir', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([201, 422]);",
+                  "});",
+                  "if (pm.response.code === 201) {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.status).to.eql('success');",
+                  "    pm.expect(json.token).to.be.a('string');",
+                  "    pm.environment.set('token', json.token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Teste Postman\",\n  \"email\": \"teste.postman@ipvc.pt\",\n  \"password\": \"123456\",\n  \"phone\": \"912345678\",\n  \"student_number\": \"12345\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "register"]
+            }
+          }
+        },
+        {
+          "name": "Me (Utilizador Autenticado)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code é 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Devolve dados do utilizador', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.id).to.be.a('number');",
+                  "    pm.expect(json.email).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "me"]
+            }
+          }
+        },
+        {
+          "name": "Logout (Invalida Token Atual)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code é 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Logout efetuado', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.status).to.eql('success');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/logout",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "logout"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "02. Catálogo & Equipamentos",
+      "item": [
+        {
+          "name": "Catálogo (Todos + Paginação)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code é 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "const json = pm.response.json();",
+                  "pm.test('Estrutura do catálogo válida', function () {",
+                  "    pm.expect(json.status).to.eql('success');",
+                  "    pm.expect(json.data.categorias).to.be.an('array');",
+                  "    pm.expect(json.data.itens).to.be.an('array');",
+                  "    pm.expect(json.data.paginacao).to.be.an('object');",
+                  "});",
+                  "if (json.data && json.data.itens && json.data.itens.length > 0) {",
+                  "    pm.environment.set('itemId', json.data.itens[0].id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/catalogo?page=1&categoria_id=Todos&search=",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "catalogo"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "categoria_id", "value": "Todos" },
+                { "key": "search", "value": "" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Catálogo (Apenas Kits)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code é 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Lista de kits devolvida', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.status).to.eql('success');",
+                  "    pm.expect(json.data.itens).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/catalogo?page=1&categoria_id=Kits",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "catalogo"],
+              "query": [
+                { "key": "page", "value": "1" },
+                { "key": "categoria_id", "value": "Kits" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Detalhes do Item/Kit",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code é 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Detalhes do equipamento válidos', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.status).to.eql('success');",
+                  "    pm.expect(json.data.id).to.exist;",
+                  "    pm.expect(json.data.nome).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/item/{{itemId}}?tipo=item",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "item", "{{itemId}}"],
+              "query": [
+                { "key": "tipo", "value": "item" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Datas Esgotadas do Item",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code é 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Datas esgotadas devolvidas', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.status).to.eql('success');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/item/{{itemId}}/datas-esgotadas?tipo=item",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "item", "{{itemId}}", "datas-esgotadas"],
+              "query": [
+                { "key": "tipo", "value": "item" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "03. Disponibilidade & Centros de Custo",
+      "item": [
+        {
+          "name": "Disponibilidade (Horários LIA)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code é 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Lista de disponibilidade válida', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.status).to.eql('success');",
+                  "    pm.expect(json.data).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/disponibilidade",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "disponibilidade"]
+            }
+          }
+        },
+        {
+          "name": "Centros de Custo",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code é 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "const json = pm.response.json();",
+                  "pm.test('Centros de custo devolvidos', function () {",
+                  "    pm.expect(json.status).to.eql('success');",
+                  "    pm.expect(json.data).to.be.an('array');",
+                  "});",
+                  "if (json.data && json.data.length > 0) {",
+                  "    pm.environment.set('costCenterId', json.data[0].id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/centros-custo",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "centros-custo"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "04. Reservas",
+      "item": [
+        {
+          "name": "Histórico de Reservas",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code é 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "const json = pm.response.json();",
+                  "pm.test('Lista de reservas devolvida', function () {",
+                  "    pm.expect(json.status).to.eql('success');",
+                  "    pm.expect(json.data).to.be.an('array');",
+                  "});",
+                  "if (json.data && json.data.length > 0) {",
+                  "    pm.environment.set('reservaId', json.data[0].id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/reservas/historico",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "reservas", "historico"]
+            }
+          }
+        },
+        {
+          "name": "Detalhes da Reserva",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code é 200 OK ou 404 se não houver reservas', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 404]);",
+                  "});",
+                  "if (pm.response.code === 200) {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.status).to.eql('success');",
+                  "    pm.expect(json.data.id).to.exist;",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/reservas/{{reservaId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "reservas", "{{reservaId}}"]
+            }
+          }
+        },
+        {
+          "name": "Criar Reserva (Grava na BD)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Resposta recebida (200/201 criada ou 422 validação)', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 201, 422, 403]);",
+                  "});",
+                  "const json = pm.response.json();",
+                  "if ((pm.response.code === 200 || pm.response.code === 201) && json.data && json.data.id) {",
+                  "    pm.environment.set('reservaId', json.data.id);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Teste via Postman\",\n  \"start_date\": \"2026-11-20\",\n  \"end_date\": \"2026-11-21\",\n  \"cost_center_id\": {{costCenterId}},\n  \"ciclica_id\": 1,\n  \"items\": [\n    { \"id\": {{itemId}}, \"quantity\": 1 }\n  ],\n  \"kits\": []\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/reservas/criar",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "reservas", "criar"]
+            }
+          }
+        },
+        {
+          "name": "Cancelar Reserva",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Resposta válida (200 cancelada ou 400 se não pendente)', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 400, 403, 404]);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/reservas/{{reservaId}}/cancelar",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "reservas", "{{reservaId}}", "cancelar"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "05. Perfil",
+      "item": [
+        {
+          "name": "Estatísticas do Perfil",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code é 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Estatísticas devolvidas corretamente', function () {",
+                  "    const json = pm.response.json();",
+                  "    pm.expect(json.status).to.eql('success');",
+                  "    pm.expect(json.data.reservas).to.be.a('number');",
+                  "    pm.expect(json.data.ativas).to.be.a('number');",
+                  "    pm.expect(json.data.itens_usados).to.be.a('number');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/perfil/estatisticas",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "perfil", "estatisticas"]
+            }
+          }
+        },
+        {
+          "name": "Editar Perfil (Form-Data)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code é 200 OK ou 422 validação', function () {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 422]);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Accept", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "name", "value": "Luis Lopes", "type": "text" },
+                { "key": "phone", "value": "912345678", "type": "text" },
+                { "key": "curso", "value": "ECGM", "type": "text" },
+                { "key": "n_aluno", "value": "12345", "type": "text" }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/perfil/edit",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "perfil", "edit"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

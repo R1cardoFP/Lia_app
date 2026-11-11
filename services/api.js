@@ -1,7 +1,7 @@
 import axios from 'axios';
 import * as SecureStore from "expo-secure-store";
 
-const API_URL = 'http://192.168.1.38:8000';
+const API_URL = 'http://193.137.161.221:3002';
 
 const api = axios.create({
   baseURL:`${API_URL}/api`,
@@ -16,7 +16,7 @@ api.interceptors.request.use(async (config) => {
   return config;
 }, (error) => {
   
-  return Promise.reject(error);   php artisan serve --host=0.0.0.0 --port=8000
+  return Promise.reject(error); // php artisan serve --host=0.0.0.0 --port=8000
 });
 
 export { API_URL };
